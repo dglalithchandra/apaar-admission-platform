@@ -2,17 +2,62 @@
   "fixtureNotice": "SYNTHETIC DATA ONLY - NOT AN AICTE RECORD",
   "snapshotId": "SYNTH-APPROVAL-2026-0001",
   "sourceSystem": "synthetic-aicte-simulator",
+  "sourceRecordId": "SYNTH-SOURCE-RECORD-0001",
   "sourceHash": "SYNTHETIC-NOT-A-CRYPTOGRAPHIC-SOURCE-HASH",
+  "importBatchReference": "SYNTH-IMPORT-0001",
+  "receivedAt": "2026-04-02T09:00:00.000Z",
+  "approvedBy": "SYNTH-AUTHORITY-0001",
+  "supersededBy": null,
+  "policyVersion": "SYNTH-APH-2024-2027",
   "academicYear": "2026-27",
   "effectiveFrom": "2026-04-01",
-  "institutionId": "SYNTH-INST-0001",
-  "campusId": "SYNTH-CAMPUS-0001",
-  "programmeId": "SYNTH-PROG-BTECH-CSE",
-  "programmeName": "Synthetic B.Tech Computer Science and Engineering",
-  "capacities": [
-    { "bucket": "REGULAR", "approved": 2 },
-    { "bucket": "SUPERNUMERARY", "approved": 1 },
-    { "bucket": "NRI", "approved": 1 },
-    { "bucket": "FOREIGN_NATIONAL", "approved": 1 }
-  ]
+  "effectiveTo": "2027-03-31",
+  "institution": {
+    "id": "SYNTH-INST-0001",
+    "name": "Synthetic Institute of Technology"
+  },
+  "campus": {
+    "id": "SYNTH-CAMPUS-0001",
+    "name": "Synthetic Main Campus"
+  },
+  "programme": {
+    "id": "SYNTH-PROG-BTECH-CSE",
+    "name": "Synthetic B.Tech Computer Science and Engineering",
+    "level": "UNDERGRADUATE"
+  },
+  "course": {
+    "id": "SYNTH-COURSE-BTECH-CSE",
+    "name": "Synthetic Computer Science and Engineering",
+    "mode": "REGULAR"
+  },
+  "ordinaryIntake": 60,
+  "nri": {
+    "approved": true,
+    "maximumWithinOrdinary": 3,
+    "countsAgainst": "ORDINARY"
+  },
+  "fnOciGulf": {
+    "approved": true,
+    "foreignAndOciCapacity": 6,
+    "gulfCapacity": 3,
+    "combinedTotalCapacity": 9,
+    "foreignNationalAcrossRoutesMaximum": 9
+  },
+  "lateral": {
+    "approved": true,
+    "supernumeraryCapacity": 6,
+    "firstYearVacancyCapacity": 2
+  },
+  "tfw": {
+    "approved": true,
+    "capacity": 3,
+    "precedingYearMinimumFillSatisfied": true,
+    "convertible": false
+  },
+  "pmUspy": {
+    "approved": true,
+    "courseCapacity": 2,
+    "institutionCapacity": 10,
+    "convertible": false
+  }
 }

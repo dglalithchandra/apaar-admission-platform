@@ -6,7 +6,7 @@ The product goal is not merely to collect a spreadsheet. It must make every admi
 
 ## Current status
 
-The foundation phase is complete enough to begin vertical-slice implementation:
+The foundation phase is complete and Build Stage 1 is underway:
 
 - authoritative public sources and local copies are indexed;
 - the current public APAAR verification contract is saved for adapter work;
@@ -14,6 +14,7 @@ The foundation phase is complete enough to begin vertical-slice implementation:
 - the product boundary, roles, domain language, architecture decisions, privacy baseline and open-source policy are documented;
 - an initial OpenAPI contract and synthetic fixtures are ready;
 - external decisions and protected inputs are isolated in one blocker register.
+- a strict TypeScript workspace and framework-independent admission-domain kernel implement the first sourced capacity rules with automated tests.
 
 No real student data, credentials or official AICTE/APAAR branding are present.
 
@@ -50,7 +51,7 @@ No real student data, credentials or official AICTE/APAAR branding are present.
 
 ## Local prerequisites
 
-Git and Node.js are available on this machine. Java and Docker were not present during foundation setup, so backend and container execution are not yet possible locally. See [local toolchain status](docs/delivery/local-toolchain-status.md).
+Git, Node.js and npm are available on this machine. The framework-independent TypeScript domain kernel runs locally. Docker was not present during foundation setup, so PostgreSQL and infrastructure-container integration remain pending. See [local toolchain status](docs/delivery/local-toolchain-status.md).
 
 ## Data safety
 

@@ -1,0 +1,9 @@
+.git/
+coverage/
+dist/
+node_modules/
+private-inputs/
+reference/documents/
+reference/source/
+tmp/
+*.csv

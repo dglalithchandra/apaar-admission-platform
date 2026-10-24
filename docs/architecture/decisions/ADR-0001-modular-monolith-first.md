@@ -1,10 +1,10 @@
 # ADR-0001: Start with a modular monolith
 
-Status: accepted for initial delivery
+Status: accepted for modularity and deployment shape; framework choice superseded by ADR-0005
 
 ## Decision
 
-Build one Spring Boot deployable with strict modules and one PostgreSQL cluster. Keep contracts and ownership boundaries that permit later extraction.
+Build one deployable with strict modules and one PostgreSQL cluster. Keep contracts and ownership boundaries that permit later extraction. ADR-0005 selects TypeScript for the application kernel.
 
 ## Why
 

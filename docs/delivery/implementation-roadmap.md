@@ -7,7 +7,7 @@ Public sources, reference code, licence tracking, product boundaries, architectu
 ## Stage 1 — executable core
 
 - create the React/TypeScript institution shell and design-system Storybook;
-- create the Spring Boot modular application and PostgreSQL migrations;
+- create the strict TypeScript modular application and PostgreSQL migrations;
 - import a synthetic approval snapshot;
 - implement versioned CSV upload, receipt, row validation and correction export;
 - implement APAAR simulator and adapter contract tests;

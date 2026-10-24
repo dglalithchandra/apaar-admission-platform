@@ -1,0 +1,37 @@
+{
+  "name": "apaar-admission-platform",
+  "version": "0.1.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "packageManager": "npm@11.17.0",
+  "engines": {
+    "node": ">=24.0.0",
+    "npm": ">=11.0.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "services/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build",
+    "clean": "npm run clean --workspaces --if-present",
+    "format": "prettier --write \"services/admission-domain/**/*.{ts,json,md}\" \"contracts/fixtures/synthetic/*.json\" \"*.{json,mjs}\" \"docs/architecture/decisions/ADR-0005-typescript-application-kernel.md\"",
+    "format:check": "prettier --check \"services/admission-domain/**/*.{ts,json,md}\" \"contracts/fixtures/synthetic/*.json\" \"*.{json,mjs}\" \"docs/architecture/decisions/ADR-0005-typescript-application-kernel.md\"",
+    "lint": "eslint .",
+    "test": "npm run test --workspaces --if-present",
+    "test:coverage": "npm run test:coverage --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "26.6.5",
+    "@vitest/coverage-v8": "5.0.5",
+    "eslint": "10.13.0",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.0",
+    "vitest": "5.0.5"
+  }
+}

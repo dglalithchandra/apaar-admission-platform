@@ -13,7 +13,7 @@ Use a mature project as a maintained dependency or container when it solves a ge
 | Server state | TanStack Query | Dependency | Caching, retries and invalidation | Makes partial failure and slow-network states explicit. |
 | Charts | Apache ECharts | Dependency | Dense regulatory visualisation | Strong accessibility and large-data support when configured carefully. |
 | Component review | Storybook | Development dependency | States, accessibility and visual regression | Forces empty/error/loading/outage states to exist before screen proliferation. |
-| Domain backend | Java + Spring Boot | Owned application on framework | Transactions, validation and integration | Mature ecosystem and clear module boundaries for regulatory systems. |
+| Domain backend | Node.js + strict TypeScript | Owned application; framework decision deferred to the first exercised service | Deterministic rules, transactions, validation and integration boundaries | Matches the available production-grade toolchain and shares contract types while keeping the domain framework-independent. |
 | Authoritative database | PostgreSQL | Managed service/container | Transactional record, constraints and history | Correctness and concurrency are more important than fashionable storage. |
 | Identity and access | Keycloak | Container/dependency | OIDC, federation and role scaffolding | Avoids building passwords and sessions; final government SSO remains pluggable. |
 | Long workflows | Temporal | Container/client | Retries, timers and human/external waits | Suitable for corrections and outages; introduce after the first vertical slice proves need. |

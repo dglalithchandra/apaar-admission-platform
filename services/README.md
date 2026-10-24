@@ -1,6 +1,6 @@
 # Service modules
 
-The initial backend should be one deployable Spring Boot application with independently testable modules:
+The initial backend should be one Node.js/TypeScript deployable with independently testable modules. The framework-independent `admission-domain` package is the first exercised module:
 
 - `identity-linking` — APAAR adapter, aliases, confidence and manual review.
 - `institution-registry` — AICTE institution, campus and programme identifiers.
