@@ -1,0 +1,18 @@
+{
+  "fixtureNotice": "SYNTHETIC DATA ONLY - NOT AN AICTE RECORD",
+  "snapshotId": "SYNTH-APPROVAL-2026-0001",
+  "sourceSystem": "synthetic-aicte-simulator",
+  "sourceHash": "SYNTHETIC-NOT-A-CRYPTOGRAPHIC-SOURCE-HASH",
+  "academicYear": "2026-27",
+  "effectiveFrom": "2026-04-01",
+  "institutionId": "SYNTH-INST-0001",
+  "campusId": "SYNTH-CAMPUS-0001",
+  "programmeId": "SYNTH-PROG-BTECH-CSE",
+  "programmeName": "Synthetic B.Tech Computer Science and Engineering",
+  "capacities": [
+    { "bucket": "REGULAR", "approved": 2 },
+    { "bucket": "SUPERNUMERARY", "approved": 1 },
+    { "bucket": "NRI", "approved": 1 },
+    { "bucket": "FOREIGN_NATIONAL", "approved": 1 }
+  ]
+}

@@ -1,0 +1,64 @@
+schema_version: 1
+generated_on: 2026-10-24
+policy: docs/security/open-source-policy.md
+components:
+  - name: React
+    source: https://github.com/facebook/react
+    license: MIT
+    use_mode: dependency
+    version: pending-lockfile
+    purpose: web application runtime
+  - name: Radix Primitives
+    source: https://github.com/radix-ui/primitives
+    license: MIT
+    use_mode: dependency
+    version: pending-lockfile
+    purpose: accessible interaction primitives
+  - name: shadcn-ui
+    source: https://github.com/shadcn-ui/ui
+    license: MIT
+    use_mode: owned-source
+    version: pending-selection
+    purpose: selectively adopted and fully restyled UI components
+  - name: TanStack Table
+    source: https://github.com/TanStack/table
+    license: MIT
+    use_mode: dependency
+    version: pending-lockfile
+    purpose: headless regulatory tables
+  - name: Keycloak
+    source: https://github.com/keycloak/keycloak
+    license: Apache-2.0
+    use_mode: container
+    version: pending-approved-image
+    purpose: local OIDC and role scaffolding
+  - name: PostgreSQL
+    source: https://www.postgresql.org/
+    license: PostgreSQL
+    use_mode: container
+    version: pending-approved-image
+    purpose: authoritative transactional store
+  - name: Open Policy Agent
+    source: https://github.com/open-policy-agent/opa
+    license: Apache-2.0
+    use_mode: container
+    version: pending-approved-image
+    purpose: fine-grained access policy
+  - name: Sunbird RC
+    source: https://github.com/Sunbird-RC/sunbird-rc-core
+    license: MIT
+    use_mode: reference-only
+    version: 6bac77b73007e2334fe3cf001b7fb8b23d678d74
+    purpose: registry and verifiable-credential patterns
+  - name: GOV.UK One Login frontend
+    source: https://github.com/govuk-one-login/govuk-one-login-frontend
+    license: MIT
+    use_mode: reference-only
+    version: 3773465b33cb5085c9edd5300909eac4060c609d
+    purpose: accessible government-service frontend patterns
+  - name: Cloudscape components
+    source: https://github.com/cloudscape-design/components
+    license: Apache-2.0
+    use_mode: reference-only
+    version: 1f35242c3287bf296f389f0ed6149393b3b25c20
+    purpose: operational interface patterns

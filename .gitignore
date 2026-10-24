@@ -1,0 +1,35 @@
+# Local and generated material
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
+.env
+.env.*
+!.env.example
+
+# Build outputs and dependency caches
+node_modules/
+dist/
+build/
+coverage/
+.gradle/
+target/
+
+# Public research artefacts are downloaded locally and indexed by hash.
+reference/documents/public/*.pdf
+reference/documents/public/*.html
+reference/documents/public/APISetu-*.yaml
+
+# Reference repositories keep their own history and are intentionally not vendored.
+reference/source/*/
+
+# Secrets and real datasets never belong in Git.
+secrets/
+private-inputs/
+data/real/
+*.p12
+*.pfx
+*.jks
+*.key
+*.pem

@@ -1,0 +1,6 @@
+153d54816f2cf11489218e239113544e8d49b73680009688baa7dc4880636051  AICTE-Approval-Process-Handbook-2024-25-to-2026-27.pdf
+39f6127cdbc1de22c4f6e71d79ca92102bf83b6073cab459f4626fe85a16b317  AICTE-PGDM-Bulk-Upload-Manual.pdf
+afda9c296ec8d054e5d8c2ab450ec2232feeeec734faadee8243821052288563  AICTE-Student-Enrollment-Manual.pdf
+77907fbf273a90f8107f7f5afa7c0666b9eb1709ccc3e83020934de9d0da3a02  APISetu-APAAR-Verify-1.1.0.yaml
+8b72fa6493ca52e3c89be9f3f39192a347621085ce2912ee7de70fe75abbf11a  CERT-In-download-response.html
+b6f3582725b64d258ef0a8de89a0c7617e0f82c3465956a66ca2fc8a83fafd3b  Samarth-Brochure.pdf

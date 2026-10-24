@@ -1,0 +1,267 @@
+openapi: 3.1.0
+info:
+  title: APAAR Admission Registry API
+  version: 0.1.0-draft
+  description: >-
+    Product-owned draft for institution submission, decision tracking and
+    purpose-limited verification. It is not an official AICTE or APAAR API.
+  license:
+    name: Internal draft - licence selection pending
+    identifier: LicenseRef-Internal-Draft
+servers:
+  - url: /
+    description: current deployment
+security:
+  - oauth2: []
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Report service health without exposing internal details
+      security: []
+      responses:
+        "200":
+          description: Service health
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [UP, DEGRADED]
+        "503":
+          description: Service is unavailable
+        "429":
+          description: Health polling rate limit exceeded
+  /v1/institutions/{institutionId}/admission-batches:
+    post:
+      operationId: createAdmissionBatch
+      summary: Register an upload and return its immutable receipt
+      parameters:
+        - $ref: '#/components/parameters/InstitutionId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBatchRequest'
+      responses:
+        "202":
+          description: Batch accepted for validation, not proof that rows are accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchReceipt'
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "422":
+          $ref: '#/components/responses/ValidationProblem'
+  /v1/admission-batches/{batchId}:
+    get:
+      operationId: getAdmissionBatch
+      summary: Read batch progress and reconciled counts
+      parameters:
+        - $ref: '#/components/parameters/BatchId'
+      responses:
+        "200":
+          description: Batch progress and reconciled counts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchStatus'
+        "404":
+          $ref: '#/components/responses/NotFound'
+  /v1/admissions/{admissionReference}:
+    get:
+      operationId: getAdmission
+      summary: Read an admission visible to the authorised caller
+      parameters:
+        - name: admissionReference
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Authorised admission view
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdmissionDecision'
+        "404":
+          $ref: '#/components/responses/NotFound'
+  /v1/academic-identity/verifications:
+    post:
+      operationId: requestAcademicIdentityVerification
+      summary: Verify through the configured APAAR adapter without exposing provider details
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [academicIdentity, purpose]
+              properties:
+                academicIdentity: { type: string }
+                purpose: { type: string, enum: [ADMISSION_LINKING, CORRECTION_REVIEW] }
+      responses:
+        "200":
+          description: Normalised result; transient failure is not an invalid identity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityVerificationResult'
+        "422":
+          $ref: '#/components/responses/ValidationProblem'
+  /v1/verifications:
+    post:
+      operationId: createPurposeLimitedVerification
+      summary: Return the minimum authorised fact and a verification receipt
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [admissionReference, purpose, requestedClaims]
+              properties:
+                admissionReference: { type: string }
+                purpose: { type: string, maxLength: 200 }
+                requestedClaims:
+                  type: array
+                  uniqueItems: true
+                  items:
+                    type: string
+                    enum: [ADMISSION_EXISTS, INSTITUTION, PROGRAMME, ACADEMIC_YEAR, CURRENT_STATUS]
+                consentReference: { type: [string, 'null'] }
+      responses:
+        "200":
+          description: Purpose-limited result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [verificationReference, issuedAt, claims]
+                properties:
+                  verificationReference: { type: string }
+                  issuedAt: { type: string, format: date-time }
+                  expiresAt: { type: [string, 'null'], format: date-time }
+                  claims: { type: object, additionalProperties: true }
+        "403":
+          description: Caller is not authorised for the requested purpose or claims
+        "422":
+          $ref: '#/components/responses/ValidationProblem'
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://identity.example.invalid/authorize
+          tokenUrl: https://identity.example.invalid/token
+          scopes: {}
+  parameters:
+    InstitutionId:
+      name: institutionId
+      in: path
+      required: true
+      schema: { type: string }
+    BatchId:
+      name: batchId
+      in: path
+      required: true
+      schema: { type: string }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, minLength: 8, maxLength: 128 }
+  responses:
+    NotFound:
+      description: Resource not found or not visible to this caller
+    Conflict:
+      description: Idempotency or lifecycle conflict
+    ValidationProblem:
+      description: Request could not be validated
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    CreateBatchRequest:
+      type: object
+      additionalProperties: false
+      required: [academicYear, programmeId, approvalSnapshotId, templateVersion, objectReference, sha256]
+      properties:
+        academicYear: { type: string, pattern: '^[0-9]{4}-[0-9]{2}$' }
+        programmeId: { type: string }
+        approvalSnapshotId: { type: string }
+        templateVersion: { type: string }
+        objectReference: { type: string, description: Opaque reference to quarantined upload }
+        sha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+    BatchReceipt:
+      type: object
+      required: [batchId, receiptReference, receivedAt, sha256, status]
+      properties:
+        batchId: { type: string }
+        receiptReference: { type: string }
+        receivedAt: { type: string, format: date-time }
+        sha256: { type: string }
+        status: { type: string, enum: [RECEIVED] }
+    BatchStatus:
+      type: object
+      required: [batchId, status, totalRows, acceptedRows, pendingRows, rejectedRows]
+      properties:
+        batchId: { type: string }
+        status: { type: string, enum: [RECEIVED, SCANNING, VALIDATING, NEEDS_ACTION, COMPLETED, FAILED] }
+        totalRows: { type: integer, minimum: 0 }
+        acceptedRows: { type: integer, minimum: 0 }
+        pendingRows: { type: integer, minimum: 0 }
+        rejectedRows: { type: integer, minimum: 0 }
+    AdmissionDecision:
+      type: object
+      required: [admissionReference, status, institutionId, programmeId, academicYear, decisionAt, rulesetVersion]
+      properties:
+        admissionReference: { type: string }
+        status: { type: string, enum: [PENDING, ACCEPTED, REJECTED, CANCELLED, UNDER_REVIEW] }
+        institutionId: { type: string }
+        programmeId: { type: string }
+        academicYear: { type: string }
+        decisionAt: { type: string, format: date-time }
+        rulesetVersion: { type: string }
+        approvalSnapshotId: { type: string }
+    IdentityVerificationResult:
+      type: object
+      required: [status, checkedAt, providerContractVersion]
+      properties:
+        status:
+          type: string
+          enum: [VERIFIED, NOT_FOUND, MISMATCH, TEMPORARILY_UNAVAILABLE, RATE_LIMITED, NOT_ELIGIBLE_FOR_APAAR, MANUAL_REVIEW, UNVERIFIED]
+        checkedAt: { type: string, format: date-time }
+        providerContractVersion: { type: string }
+        providerRequestReference: { type: [string, 'null'] }
+    Problem:
+      type: object
+      required: [type, title, status, traceId]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        traceId: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            required: [code, message]
+            properties:
+              code: { type: string }
+              field: { type: [string, 'null'] }
+              row: { type: [integer, 'null'] }
+              message: { type: string }
