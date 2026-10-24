@@ -1,0 +1,48 @@
+# AICTE approval-policy fact register
+
+Checked against the official *Approval Process Handbook 2024-25 to 2026-27*. Page numbers below are PDF page numbers, not the printed page number. This register records source facts; it is not a substitute for AICTE legal or policy approval.
+
+## Confirmed source facts
+
+| Topic | Handbook fact | PDF page(s) | Product consequence |
+|---|---|---:|---|
+| Approved Intake | The maximum number of students that may be admitted in a Course, excluding Supernumerary Seats. | 12 | Capacity must be attached to an effective-dated course approval, not stored as one institution-wide number. |
+| Competent Authority | The State/UT body legally delegated to conduct admissions to technical institutions. | 12 | The source and authority of an admission must be recorded; an institution declaration alone may not prove category eligibility. |
+| NRI definition | An Indian citizen ordinarily residing outside India who holds an Indian passport. | 14 | `NRI` is an admission category/evidence decision, not a synonym for foreign nationality. |
+| OCI definition | OCI is defined as a status of a foreign national meeting the stated historical eligibility conditions. | 14 | OCI status and seat category must be separate fields. |
+| Supernumerary definition | Intake over and above Approved Intake; the listed examples include TFW, OCI/FN/children of Indian workers in Gulf countries, lateral entry, PwBD, Kashmiri migrants, PM-USPY and working professionals. | 15 | Never merge supernumerary consumption into the ordinary-seat counter. Each scheme needs its own rule and evidence type. |
+| NRI approval and capacity | Institutions must seek approval; five percent of seats **within** Approved Intake may be used for NRI admission. Admission is through the competent authority and merit. | 34 | NRI is not an extra 5% capacity bucket. The engine must require course/year NRI approval and consume ordinary intake. |
+| Vacant NRI seats | If NRI candidates are unavailable, those seats may be given to general candidates on merit at the regular fee. | 34 | A conversion event needs authority, date and audit evidence; it must not be a silent category edit. |
+| FN/OCI/Gulf capacity | Fifteen percent supernumerary seats over Approved Intake per Course may be approved for the combined group; one third of that group is reserved for children of Indian workers in Gulf countries. Eligibility includes the institution conditions described in the handbook. | 34–35 | Store the combined ceiling and sub-allocation separately. Availability depends on a current course-specific approval, not only student status. |
+| FN/OCI/Gulf transfer | Vacancies may move between the one-third Gulf and two-thirds OCI/FN portions. After the last State/UT admission round, remaining seats may be filled with NRI candidates only with AICTE NRI approval and the required norms. | 35 | Model authorised bucket transfers as effective-dated events, preserving the original and destination bucket. |
+| FN/OCI/Gulf restrictions | These seats are not to be filled by Indian citizens; ICCR/Government nominees count within the ceiling; continuation is course-specific and annual. | 35 | Validate nationality/status, route and annual approval together. A static institution flag is insufficient. |
+| Mode restriction | NRI/OCI/FN/children-of-Gulf-worker seats are permitted only in courses conducted in regular mode. | 70 | Course mode is part of the rule key. |
+| Lateral entry | Up to a maximum of 10% of Approved Intake is supernumerary for eligible second-year Diploma/UG entry, plus unfilled first-year vacancies. | 70 | Keep the 10% allocation and the vacancy-derived allocation distinguishable, because they have different provenance. |
+| Foreign-national lateral-entry ceiling | Foreign nationals under supernumerary seats and lateral entry together must not exceed 15% of Approved Intake in an academic year. | 71 | Some capacity limits span multiple buckets; validation needs cross-bucket aggregate rules. |
+| Withdrawal and lateral entry | First-year seats vacated by withdrawal may be considered for lateral entry. | 71 | A withdrawal does not automatically free every kind of capacity; the policy engine needs an explicit, dated transition. |
+| TFW | Up to 5% of Approved Intake per Course is supernumerary, subject to the preceding-year fill condition. Unfilled TFW seats cannot be given to another category. | 75 | Treat TFW capacity as non-convertible and eligibility-dependent. |
+| PM-USPY | Two seats per Course, with a maximum of ten per Institution, are supernumerary; unfilled seats are non-transferable. | 76 | This is a two-level cap: course and institution. |
+| Excess admission | Admission above Approved Intake is prohibited and can trigger penal action. Eligibility violations can also trigger penal action. | 87 | The system should block or escalate before acceptance; a dashboard-only warning is insufficient. |
+
+## Important interpretation boundary
+
+The handbook supplies regulatory definitions and several capacity rules, but it does not fully specify the operational state machine for cancellation, transfer, readmission, correction deadlines, simultaneous enrolment, missing APAAR, or exception approval. Those rules must not be invented from UI behaviour or inferred from spreadsheet columns.
+
+The product should label rules as:
+
+- `SOURCE_CONFIRMED` — directly represented by an effective official source;
+- `AUTHORITY_CONFIGURED` — supplied and signed off by an accountable authority;
+- `PROPOSED` — safe for simulation and user testing but not enforcement;
+- `UNKNOWN_BLOCKING` — requires review before the affected record can be accepted.
+
+## Decisions still requiring accountable input
+
+- exact approval key: institution/campus/course/level/mode/shift/academic year and amendment precedence;
+- rounding method for percentage capacities and treatment of fractional seats;
+- cancellation, transfer, migration, readmission and back-dated correction timelines;
+- permitted simultaneous or overlapping programmes by mode and date;
+- APAAR-unavailable and demographic-mismatch exception paths;
+- when an over-capacity row is rejected, held for review or accepted under a formally approved exception;
+- source hierarchy when AICTE, a State/UT authority and an institution provide conflicting data;
+- appeal, reopening and final-submission authority.
+

@@ -23,8 +23,11 @@ No real student data, credentials or official AICTE/APAAR branding are present.
 2. [Domain glossary](docs/product/domain-glossary.md)
 3. [Source reuse plan](docs/product/source-reuse-plan.md)
 4. [System context](docs/architecture/system-context.md)
-5. [External access blockers](docs/research/external-access-blockers.md)
-6. [Delivery plan](docs/delivery/implementation-roadmap.md)
+5. [Current submission workflow findings](docs/research/current-submission-workflow-findings.md)
+6. [Approval-policy fact register](docs/research/approval-policy-fact-register.md)
+7. [API Setu onboarding plan](docs/research/apisetu-onboarding-plan.md)
+8. [External access blockers](docs/research/external-access-blockers.md)
+9. [Delivery plan](docs/delivery/implementation-roadmap.md)
 
 ## Repository map
 

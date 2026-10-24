@@ -15,6 +15,7 @@ build/
 coverage/
 .gradle/
 target/
+tmp/
 
 # Public research artefacts are downloaded locally and indexed by hash.
 reference/documents/public/*.pdf
