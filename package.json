@@ -15,19 +15,24 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run validate:contracts && npm run build",
     "clean": "npm run clean --workspaces --if-present",
-    "format": "prettier --write \"services/admission-domain/**/*.{ts,json,md}\" \"contracts/fixtures/synthetic/*.json\" \"*.{json,mjs}\" \"docs/architecture/decisions/ADR-0005-typescript-application-kernel.md\"",
-    "format:check": "prettier --check \"services/admission-domain/**/*.{ts,json,md}\" \"contracts/fixtures/synthetic/*.json\" \"*.{json,mjs}\" \"docs/architecture/decisions/ADR-0005-typescript-application-kernel.md\"",
+    "format": "prettier --write \"services/**/*.{ts,json,md}\" \"contracts/**/*.{json,yaml}\" \"*.{json,mjs}\" \"docs/architecture/decisions/*.md\" \"docs/delivery/*.md\" \"README.md\"",
+    "format:check": "prettier --check \"services/**/*.{ts,json,md}\" \"contracts/**/*.{json,yaml}\" \"*.{json,mjs}\" \"docs/architecture/decisions/*.md\" \"docs/delivery/*.md\" \"README.md\"",
     "lint": "eslint .",
     "test": "npm run test --workspaces --if-present",
     "test:coverage": "npm run test:coverage --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "test:integration:postgres": "npm run test:integration -w @apaar-platform/admission-application",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "validate:contracts": "redocly lint contracts/openapi/apaar-platform.yaml && tsx scripts/validate-json-schema.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@types/node": "26.6.5",
+    "@redocly/cli": "2.71.0",
     "@vitest/coverage-v8": "5.0.5",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
     "eslint": "10.13.0",
     "prettier": "3.9.10",
     "typescript": "6.0.3",

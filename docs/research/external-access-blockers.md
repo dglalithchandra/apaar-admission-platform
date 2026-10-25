@@ -2,6 +2,8 @@
 
 Everything below genuinely requires institutional authority, protected data or an accountable product decision. None should block the simulator-based first vertical slice.
 
+The former local container-runtime blocker is resolved. Docker Desktop 4.96.3 now runs its Linux engine through WSL 2, and the Stage 2 Testcontainers suite passes against pinned PostgreSQL 17.6. Authority-controlled integrations listed below remain blocked; local container availability does not change those boundaries.
+
 | Need | Why public Browser access is insufficient | Work that can continue now | Required owner/input |
 |---|---|---|---|
 | API Setu/APAAR production subscription and credentials | The signup is organisation-scoped and the manuals require organisational evidence, a reviewed use case and a publisher-issued authorisation letter. Credential creation is permitted only after approval and produces a one-time secret. | The current contract, SOPs, complete checklist, use-case draft and letter templates are prepared; simulator work can continue. | Legal consuming organisation, existing-account check, authorised representative/domain email, organisation documents, publisher letter, production IP/domain, approval and secrets manager. |

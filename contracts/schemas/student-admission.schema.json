@@ -2,49 +2,100 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.invalid/schemas/student-admission.schema.json",
   "title": "Student admission command",
-  "description": "Draft product-owned schema. All example identifiers are synthetic.",
+  "description": "Product-owned command contract. Provider-specific academic-identity fields are intentionally excluded.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "recordKey",
+    "studentReference",
     "institutionId",
     "campusId",
     "programmeId",
+    "courseId",
     "academicYear",
-    "institutionStudentId",
-    "studentName",
-    "dateOfBirth",
     "admissionDate",
-    "seatBucket"
+    "category",
+    "lateralCapacitySource",
+    "studentStatus",
+    "eligibilityEvidence",
+    "identityVerification"
   ],
   "properties": {
     "recordKey": { "type": "string", "minLength": 8, "maxLength": 128 },
+    "studentReference": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Opaque product reference; never an APAAR database primary key."
+    },
     "institutionId": { "type": "string", "minLength": 1, "maxLength": 64 },
     "campusId": { "type": "string", "minLength": 1, "maxLength": 64 },
     "programmeId": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "courseId": { "type": "string", "minLength": 1, "maxLength": 64 },
     "academicYear": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
-    "apaarId": { "type": ["string", "null"], "minLength": 1, "maxLength": 64 },
-    "identityExceptionReason": {
-      "type": ["string", "null"],
-      "enum": [null, "NOT_ELIGIBLE_FOR_APAAR", "PENDING_ISSUANCE", "TEMPORARILY_UNAVAILABLE", "OTHER_REVIEW_REQUIRED"]
-    },
-    "institutionStudentId": { "type": "string", "minLength": 1, "maxLength": 128 },
-    "studentName": { "type": "string", "minLength": 1, "maxLength": 200 },
-    "dateOfBirth": { "type": "string", "format": "date" },
     "admissionDate": { "type": "string", "format": "date" },
-    "seatBucket": {
+    "category": {
       "type": "string",
-      "enum": ["REGULAR", "SUPERNUMERARY", "NRI", "OCI", "FOREIGN_NATIONAL", "OTHER_POLICY_BUCKET"]
+      "enum": [
+        "ORDINARY",
+        "NRI",
+        "FOREIGN_NATIONAL",
+        "OCI",
+        "GULF_WORKER_CHILD",
+        "LATERAL_ENTRY",
+        "TFW",
+        "PM_USPY",
+        "OTHER_SUPERNUMERARY"
+      ]
     },
-    "nri": { "type": "boolean", "default": false },
-    "oci": { "type": "boolean", "default": false },
-    "foreignNational": { "type": "boolean", "default": false },
-    "consentReference": { "type": ["string", "null"], "maxLength": 128 }
+    "lateralCapacitySource": {
+      "type": ["string", "null"],
+      "enum": [null, "LATERAL_SUPERNUMERARY", "LATERAL_FIRST_YEAR_VACANCY"]
+    },
+    "studentStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nri", "oci", "foreignNational", "gulfWorkerChild"],
+      "properties": {
+        "nri": { "type": "boolean" },
+        "oci": { "type": "boolean" },
+        "foreignNational": { "type": "boolean" },
+        "gulfWorkerChild": { "type": "boolean" }
+      }
+    },
+    "eligibilityEvidence": { "type": "string", "enum": ["VERIFIED", "PENDING", "MISSING"] },
+    "identityVerification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "checkedAt", "providerContractVersion", "providerRequestReference"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "VERIFIED",
+            "NOT_FOUND",
+            "MISMATCH",
+            "TEMPORARILY_UNAVAILABLE",
+            "RATE_LIMITED",
+            "NOT_ELIGIBLE_FOR_APAAR",
+            "MANUAL_REVIEW",
+            "UNVERIFIED"
+          ]
+        },
+        "checkedAt": { "type": "string", "format": "date-time" },
+        "providerContractVersion": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "providerRequestReference": { "type": ["string", "null"], "maxLength": 128 }
+      }
+    }
   },
   "allOf": [
     {
-      "if": { "properties": { "apaarId": { "type": "null" } }, "required": ["apaarId"] },
-      "then": { "required": ["identityExceptionReason"] }
+      "if": {
+        "properties": { "category": { "const": "LATERAL_ENTRY" } },
+        "required": ["category"]
+      },
+      "then": { "properties": { "lateralCapacitySource": { "type": "string" } } },
+      "else": { "properties": { "lateralCapacitySource": { "type": "null" } } }
     }
   ]
 }

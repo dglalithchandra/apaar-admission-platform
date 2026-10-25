@@ -6,7 +6,7 @@ The product goal is not merely to collect a spreadsheet. It must make every admi
 
 ## Current status
 
-The foundation phase is complete and Build Stage 1 is underway:
+The foundation, admission-domain kernel and Build Stage 2 PostgreSQL application foundation are complete:
 
 - authoritative public sources and local copies are indexed;
 - the current public APAAR verification contract is saved for adapter work;
@@ -15,6 +15,8 @@ The foundation phase is complete and Build Stage 1 is underway:
 - an initial OpenAPI contract and synthetic fixtures are ready;
 - external decisions and protected inputs are isolated in one blocker register.
 - a strict TypeScript workspace and framework-independent admission-domain kernel implement the first sourced capacity rules with automated tests.
+- an exercised admission application service, versioned PostgreSQL migration, explicit `pg` adapter, idempotency, transactional capacity reservations, append-only audit and outbox are present;
+- a pinned `postgres:17.6-alpine` Testcontainers suite covers migrations, persistence, rollback, idempotency, scheme-specific counters and the concurrent last seat; all 11 integration tests pass against the real Linux PostgreSQL image.
 
 No real student data, credentials or official AICTE/APAAR branding are present.
 
@@ -51,7 +53,7 @@ No real student data, credentials or official AICTE/APAAR branding are present.
 
 ## Local prerequisites
 
-Git, Node.js and npm are available on this machine. The framework-independent TypeScript domain kernel runs locally. Docker was not present during foundation setup, so PostgreSQL and infrastructure-container integration remain pending. See [local toolchain status](docs/delivery/local-toolchain-status.md).
+Git, Node.js and npm are available on this machine. Docker Desktop uses its WSL 2 Linux engine, and the framework-independent TypeScript domain kernel, application-service tests and PostgreSQL Testcontainers suite run locally. See [local toolchain status](docs/delivery/local-toolchain-status.md).
 
 ## Data safety
 
