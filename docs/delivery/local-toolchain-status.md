@@ -16,4 +16,8 @@ Observed on 25 October 2026:
 
 `npm run test:integration:postgres` completed successfully on 25 October 2026. It started the pinned `postgres:17.6-alpine` image and passed all 11 migration, repository, rollback, idempotency and concurrency tests. Unit tests, contract validation, lint, type checking and builds remain separate required checks.
 
+`npm run test:e2e:batch` also completed successfully on 25 October 2026 against a fresh `postgres:17.6-alpine` Testcontainer. All 11 Stage 3 tests passed, including migration over Stage 2 and repeatability, upload/digest idempotency, provider retry exhaustion, lease recovery, concurrent row claims, final-seat competition, immutable decision references, rollback with audit/outbox atomicity, reconciliation and formula-safe correction export.
+
+The React/Vite institution workspace was inspected in the local in-app browser at desktop and narrow responsive widths. Template selection, synthetic upload, immutable receipt, mixed results, filtering and the horizontally safe row-results presentation worked without browser console errors. This is development verification, not a formal WCAG or assistive-technology audit.
+
 Docker Desktop was installed for all users with the WSL 2 backend. WSL was repaired in place from 2.6.3.0 to 2.7.14.0 using Microsoft's signed package after the older runtime failed Docker's startup precondition.

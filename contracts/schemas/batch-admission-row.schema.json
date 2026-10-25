@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/batch-admission-row.schema.json",
+  "title": "Product-owned student admission CSV row version 1.0",
+  "description": "Transport-neutral representation of one institution-supplied CSV row. Identity-verification outcomes are deliberately absent because only the configured verifier may assert them.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "templateVersion",
+    "recordKey",
+    "studentReference",
+    "academicIdentityReference",
+    "institutionId",
+    "campusId",
+    "programmeId",
+    "courseId",
+    "academicYear",
+    "admissionDate",
+    "category",
+    "lateralCapacitySource",
+    "nri",
+    "oci",
+    "foreignNational",
+    "gulfWorkerChild",
+    "eligibilityEvidence"
+  ],
+  "properties": {
+    "templateVersion": { "const": "1.0" },
+    "recordKey": { "type": "string", "minLength": 8, "maxLength": 128 },
+    "studentReference": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "academicIdentityReference": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Opaque identity reference passed to the replaceable verifier; not an asserted verification result."
+    },
+    "institutionId": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "campusId": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "programmeId": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "courseId": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "academicYear": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
+    "admissionDate": { "type": "string", "format": "date" },
+    "category": {
+      "type": "string",
+      "enum": [
+        "ORDINARY",
+        "NRI",
+        "FOREIGN_NATIONAL",
+        "OCI",
+        "GULF_WORKER_CHILD",
+        "LATERAL_ENTRY",
+        "TFW",
+        "PM_USPY",
+        "OTHER_SUPERNUMERARY"
+      ]
+    },
+    "lateralCapacitySource": {
+      "type": ["string", "null"],
+      "enum": [null, "LATERAL_SUPERNUMERARY", "LATERAL_FIRST_YEAR_VACANCY"]
+    },
+    "nri": { "type": "boolean" },
+    "oci": { "type": "boolean" },
+    "foreignNational": { "type": "boolean" },
+    "gulfWorkerChild": { "type": "boolean" },
+    "eligibilityEvidence": { "type": "string", "enum": ["VERIFIED", "PENDING", "MISSING"] }
+  }
+}

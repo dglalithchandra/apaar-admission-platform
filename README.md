@@ -6,7 +6,7 @@ The product goal is not merely to collect a spreadsheet. It must make every admi
 
 ## Current status
 
-The foundation, admission-domain kernel and Build Stage 2 PostgreSQL application foundation are complete:
+The foundation through Build Stage 3 is complete:
 
 - authoritative public sources and local copies are indexed;
 - the current public APAAR verification contract is saved for adapter work;
@@ -17,6 +17,9 @@ The foundation, admission-domain kernel and Build Stage 2 PostgreSQL application
 - a strict TypeScript workspace and framework-independent admission-domain kernel implement the first sourced capacity rules with automated tests.
 - an exercised admission application service, versioned PostgreSQL migration, explicit `pg` adapter, idempotency, transactional capacity reservations, append-only audit and outbox are present;
 - a pinned `postgres:17.6-alpine` Testcontainers suite covers migrations, persistence, rollback, idempotency, scheme-specific counters and the concurrent last seat; all 11 integration tests pass against the real Linux PostgreSQL image.
+- product-owned CSV template 1.0, bounded streaming validation, digest/idempotency handling, malware and academic-identity simulator ports, resumable PostgreSQL row workers and row-derived reconciliation are implemented;
+- the real PostgreSQL batch journey covers repeatable migration over Stage 2, replay/conflict behavior, worker recovery and concurrency, immutable Stage 2 decision links, final-seat competition, audit/outbox atomicity and correction safety;
+- an exercised React/Vite institution workspace provides accessible template download, preflight upload, immutable receipt, reconciled totals, row filtering, explanations, correction export and valid retry actions using synthetic local data.
 
 No real student data, credentials or official AICTE/APAAR branding are present.
 
@@ -31,10 +34,12 @@ No real student data, credentials or official AICTE/APAAR branding are present.
 7. [API Setu onboarding plan](docs/research/apisetu-onboarding-plan.md)
 8. [External access blockers](docs/research/external-access-blockers.md)
 9. [Delivery plan](docs/delivery/implementation-roadmap.md)
+10. [CSV template 1.0](docs/product/csv-template-v1.0.md)
+11. [Batch operations runbook](docs/operations/batch-ingestion-runbook.md)
 
 ## Repository map
 
-- `apps/` — role-specific web applications and shared frontend packages.
+- `apps/` — role-specific web applications and shared frontend packages; Stage 3 includes the exercised institution portal.
 - `services/` — owned backend domain modules.
 - `contracts/` — API contracts, schemas and synthetic test fixtures.
 - `docs/` — product, architecture, security, research and delivery decisions.
@@ -54,6 +59,8 @@ No real student data, credentials or official AICTE/APAAR branding are present.
 ## Local prerequisites
 
 Git, Node.js and npm are available on this machine. Docker Desktop uses its WSL 2 Linux engine, and the framework-independent TypeScript domain kernel, application-service tests and PostgreSQL Testcontainers suite run locally. See [local toolchain status](docs/delivery/local-toolchain-status.md).
+
+Use `npm run check` for formatting, linting, types, coverage, contracts and builds. Use `npm run test:integration:postgres` for the Stage 2 persistence suite and `npm run test:e2e:batch` for the Stage 3 real-PostgreSQL journey. The portal runs locally with `npm run dev -w @apaar-platform/institution-portal`.
 
 ## Data safety
 

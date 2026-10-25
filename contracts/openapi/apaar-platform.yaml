@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: APAAR Admission Registry API
-  version: 0.1.0-draft
+  version: 0.2.0-draft
   description: >-
     Product-owned draft for institution submission, decision tracking and
     purpose-limited verification. It is not an official AICTE or APAAR API.
@@ -45,7 +45,7 @@ paths:
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: '#/components/schemas/CreateBatchRequest'
       responses:
@@ -57,8 +57,49 @@ paths:
                 $ref: '#/components/schemas/BatchReceipt'
         '409':
           $ref: '#/components/responses/Conflict'
+        '413':
+          description: Upload exceeds the documented five-megabyte limit
         '422':
           $ref: '#/components/responses/ValidationProblem'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /v1/admission-batches/templates:
+    get:
+      operationId: listAdmissionBatchTemplates
+      summary: List product-owned CSV template versions supported for new uploads
+      responses:
+        '200':
+          description: Supported template versions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [currentVersion, versions]
+                properties:
+                  currentVersion: { type: string, const: '1.0' }
+                  versions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TemplateVersion'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /v1/admission-batches/templates/{templateVersion}.csv:
+    get:
+      operationId: downloadAdmissionBatchTemplate
+      summary: Download a product-owned UTF-8 CSV template
+      parameters:
+        - $ref: '#/components/parameters/TemplateVersion'
+      responses:
+        '200':
+          description: Header-only CSV template
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            text/csv:
+              schema: { type: string }
+        '404':
+          $ref: '#/components/responses/NotFound'
   /v1/institutions/{institutionId}/admissions:
     post:
       operationId: submitAdmission
@@ -106,6 +147,96 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BatchStatus'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/admission-batches/{batchId}/rows:
+    get:
+      operationId: listAdmissionBatchRows
+      summary: List authorised row results with stable cursor pagination and filters
+      parameters:
+        - $ref: '#/components/parameters/BatchId'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/BatchRowStatus'
+        - name: query
+          in: query
+          description: Case-insensitive record-key prefix; identity values are not searchable.
+          schema: { type: string, maxLength: 128 }
+        - name: cursor
+          in: query
+          schema: { type: string, maxLength: 256 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+      responses:
+        '200':
+          description: Row-result page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchRowPage'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/admission-batches/{batchId}/rows/{recordKey}:
+    get:
+      operationId: getAdmissionBatchRow
+      summary: Read one row result by institution-supplied stable record key
+      parameters:
+        - $ref: '#/components/parameters/BatchId'
+        - $ref: '#/components/parameters/RecordKey'
+      responses:
+        '200':
+          description: Row result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchRowResult'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/admission-batches/{batchId}/rows/{recordKey}/retry:
+    post:
+      operationId: retryAdmissionBatchRow
+      summary: Authorise one bounded retry when the current row state is retryable
+      parameters:
+        - $ref: '#/components/parameters/BatchId'
+        - $ref: '#/components/parameters/RecordKey'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [actorReference, reason, requestReference]
+              properties:
+                actorReference: { type: string, minLength: 1, maxLength: 128 }
+                reason: { type: string, minLength: 1, maxLength: 200 }
+                requestReference: { type: string, minLength: 1, maxLength: 128 }
+      responses:
+        '202':
+          description: Retry command accepted; this is not an admission acceptance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchRowResult'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationProblem'
+  /v1/admission-batches/{batchId}/corrections.csv:
+    get:
+      operationId: downloadAdmissionBatchCorrections
+      summary: Download formula-safe rows needing institution action
+      parameters:
+        - $ref: '#/components/parameters/BatchId'
+      responses:
+        '200':
+          description: UTF-8 correction CSV generated from retained safe fields and findings
+          content:
+            text/csv:
+              schema: { type: string }
         '404':
           $ref: '#/components/responses/NotFound'
   /v1/admissions/{admissionReference}:
@@ -211,12 +342,28 @@ components:
       in: path
       required: true
       schema: { type: string }
+    RecordKey:
+      name: recordKey
+      in: path
+      required: true
+      schema: { type: string, minLength: 8, maxLength: 128 }
+    TemplateVersion:
+      name: templateVersion
+      in: path
+      required: true
+      schema: { type: string, pattern: '^[0-9]+\.[0-9]+$' }
     IdempotencyKey:
       name: Idempotency-Key
       in: header
       required: true
       schema: { type: string, minLength: 8, maxLength: 128 }
   responses:
+    Unauthenticated:
+      description: Authentication is missing or invalid
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
     NotFound:
       description: Resource not found or not visible to this caller
     Conflict:
@@ -227,41 +374,136 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+    DependencyUnavailable:
+      description: A required scanner or identity provider is temporarily unavailable
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
   schemas:
     SubmitAdmissionRequest:
       $ref: ../schemas/student-admission.schema.json
     CreateBatchRequest:
       type: object
       additionalProperties: false
-      required:
-        [academicYear, programmeId, approvalSnapshotId, templateVersion, objectReference, sha256]
+      required: [file, templateVersion, actorReference, reason, requestReference]
       properties:
-        academicYear: { type: string, pattern: '^[0-9]{4}-[0-9]{2}$' }
-        programmeId: { type: string }
-        approvalSnapshotId: { type: string }
-        templateVersion: { type: string }
-        objectReference: { type: string, description: Opaque reference to quarantined upload }
-        sha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+        file:
+          type: string
+          format: binary
+          description: Product-owned UTF-8 CSV, at most 5 MB and 10,000 data rows.
+        templateVersion: { type: string, const: '1.0' }
+        actorReference: { type: string, minLength: 1, maxLength: 128 }
+        reason: { type: string, minLength: 1, maxLength: 200 }
+        requestReference: { type: string, minLength: 1, maxLength: 128 }
     BatchReceipt:
       type: object
-      required: [batchId, receiptReference, receivedAt, sha256, status]
+      required: [batchId, receiptReference, receivedAt, replayed, sha256, status, templateVersion]
       properties:
         batchId: { type: string }
         receiptReference: { type: string }
         receivedAt: { type: string, format: date-time }
+        replayed: { type: boolean }
         sha256: { type: string }
         status: { type: string, enum: [RECEIVED] }
+        templateVersion: { type: string, const: '1.0' }
     BatchStatus:
       type: object
-      required: [batchId, status, totalRows, acceptedRows, pendingRows, rejectedRows]
+      required: [batchId, receiptReference, receivedAt, sha256, templateVersion, status, totals]
       properties:
         batchId: { type: string }
+        receiptReference: { type: string }
+        receivedAt: { type: string, format: date-time }
+        sha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+        templateVersion: { type: string, const: '1.0' }
         status:
-          { type: string, enum: [RECEIVED, SCANNING, VALIDATING, NEEDS_ACTION, COMPLETED, FAILED] }
-        totalRows: { type: integer, minimum: 0 }
-        acceptedRows: { type: integer, minimum: 0 }
-        pendingRows: { type: integer, minimum: 0 }
-        rejectedRows: { type: integer, minimum: 0 }
+          {
+            type: string,
+            enum: [RECEIVED, SCANNING, VALIDATING, PROCESSING, NEEDS_ACTION, COMPLETED, FAILED],
+          }
+        totals:
+          $ref: '#/components/schemas/BatchTotals'
+    BatchTotals:
+      type: object
+      additionalProperties: false
+      required: [accepted, failedFinal, invalid, manualReview, pending, rejected, retryable, total]
+      properties:
+        accepted: { type: integer, minimum: 0 }
+        failedFinal: { type: integer, minimum: 0 }
+        invalid: { type: integer, minimum: 0 }
+        manualReview: { type: integer, minimum: 0 }
+        pending: { type: integer, minimum: 0 }
+        rejected: { type: integer, minimum: 0 }
+        retryable: { type: integer, minimum: 0 }
+        total: { type: integer, minimum: 0 }
+    BatchRowStatus:
+      type: string
+      enum:
+        [
+          RECEIVED,
+          VALID,
+          INVALID,
+          PROCESSING,
+          ACCEPTED,
+          REJECTED,
+          MANUAL_REVIEW,
+          FAILED_RETRYABLE,
+          FAILED_FINAL,
+        ]
+    BatchRowFinding:
+      type: object
+      additionalProperties: false
+      required: [code, severity, field, message]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 100 }
+        severity: { type: string, enum: [INFO, WARNING, REVIEW, ERROR] }
+        field: { type: [string, 'null'], maxLength: 128 }
+        message: { type: string, minLength: 1, maxLength: 500 }
+    BatchRowResult:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          rowNumber,
+          recordKey,
+          status,
+          attemptCount,
+          admissionReference,
+          decisionReference,
+          findings,
+        ]
+      properties:
+        rowNumber: { type: integer, minimum: 2 }
+        recordKey: { type: string, minLength: 8, maxLength: 128 }
+        status:
+          $ref: '#/components/schemas/BatchRowStatus'
+        attemptCount: { type: integer, minimum: 0, maximum: 3 }
+        admissionReference: { type: [string, 'null'] }
+        decisionReference: { type: [string, 'null'] }
+        findings:
+          type: array
+          items:
+            $ref: '#/components/schemas/BatchRowFinding'
+    BatchRowPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BatchRowResult'
+        nextCursor: { type: [string, 'null'] }
+    TemplateVersion:
+      type: object
+      additionalProperties: false
+      required: [version, current, mediaType, maximumBytes, maximumRows]
+      properties:
+        version: { type: string, const: '1.0' }
+        current: { type: boolean }
+        mediaType: { type: string, const: 'text/csv' }
+        maximumBytes: { type: integer, const: 5242880 }
+        maximumRows: { type: integer, const: 10000 }
     AdmissionDecision:
       type: object
       additionalProperties: false

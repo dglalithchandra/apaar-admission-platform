@@ -19,7 +19,7 @@ Strict TypeScript domain types, sourced capacity policy, stable rule codes and c
 
 Exit condition satisfied on 25 October 2026: `npm run test:integration:postgres` passed 11/11 tests against pinned PostgreSQL 17.6.
 
-## Stage 3 — versioned student batch-ingestion pipeline
+## Stage 3 — versioned student batch-ingestion pipeline (completed)
 
 - create the React/TypeScript institution shell and design-system Storybook;
 - implement versioned CSV upload, receipt, row validation and correction export;
@@ -27,7 +27,7 @@ Exit condition satisfied on 25 October 2026: `npm run test:integration:postgres`
 - reuse Stage 2 row idempotency and transactional decisions;
 - expose institution and reviewer queues with full error/empty/outage states.
 
-Exit condition: a complete upload-to-decision journey runs locally with automated tests and no real data.
+Exit condition satisfied on 25 October 2026: the complete synthetic upload-to-decision journey, portal interaction suite and pinned `postgres:17.6-alpine` batch integration suite pass locally. Receipt replay, bounded validation, provider failures, resumable workers, Stage 2 decision links, concurrent final-seat protection, reconciliation, audit/outbox atomicity and correction-file safety are exercised without real data.
 
 ## Stage 4 — casework and governance
 
