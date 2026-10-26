@@ -17,6 +17,7 @@ const FILTERS: readonly { label: string; value: 'ALL' | RowStatus }[] = [
   { label: 'Retryable', value: 'FAILED_RETRYABLE' },
   { label: 'Invalid file rows', value: 'INVALID' },
 ];
+type PreviewRole = CaseworkRole | 'INSTITUTION_ADMINISTRATOR' | 'AUDITOR' | 'AUTHORIZED_VERIFIER';
 
 function downloadText(filename: string, content: string): void {
   const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8' }));
@@ -98,7 +99,7 @@ export function App({
   readonly client?: PortalClient;
   readonly caseworkClient?: CaseworkClient;
   readonly integrationClient?: IntegrationClient;
-  readonly initialRole?: CaseworkRole;
+  readonly initialRole?: PreviewRole;
   readonly initialView?: 'BATCH' | 'CASEWORK' | 'INTEGRATIONS';
 }): JSX.Element {
   const batchClient = useMemo(() => client ?? new DemoPortalClient(), [client]);
@@ -111,7 +112,13 @@ export function App({
     [integrationClient],
   );
   const [view, setView] = useState<'BATCH' | 'CASEWORK' | 'INTEGRATIONS'>(initialView);
-  const [role, setRole] = useState<CaseworkRole>(initialRole);
+  const [role, setRole] = useState<PreviewRole>(initialRole);
+  const caseworkRole: CaseworkRole | null =
+    role === 'INSTITUTION_ADMINISTRATOR'
+      ? 'INSTITUTION_OPERATOR'
+      : role === 'AUDITOR' || role === 'AUTHORIZED_VERIFIER'
+        ? null
+        : role;
   const [selected, setSelected] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -204,13 +211,20 @@ export function App({
             <select
               aria-label="Preview role"
               onChange={(event) => {
-                setRole(event.currentTarget.value as CaseworkRole);
+                const next = event.currentTarget.value as PreviewRole;
+                setRole(next);
+                if (next === 'AUDITOR' || next === 'AUTHORIZED_VERIFIER') {
+                  setView('INTEGRATIONS');
+                }
               }}
               value={role}
             >
               <option value="INSTITUTION_OPERATOR">Institution operator</option>
+              <option value="INSTITUTION_ADMINISTRATOR">Institution administrator</option>
               <option value="AICTE_REVIEWER">AICTE reviewer</option>
               <option value="AICTE_CHECKER">AICTE checker</option>
+              <option value="AUDITOR">Auditor</option>
+              <option value="AUTHORIZED_VERIFIER">Authorized verifier</option>
             </select>
           </label>
         </div>
@@ -252,7 +266,14 @@ export function App({
         </nav>
         <main id="main-content">
           {view === 'CASEWORK' ? (
-            <CaseworkWorkspace client={governedCaseworkClient} role={role} />
+            caseworkRole === null ? (
+              <div className="error-summary" role="alert">
+                <strong>Casework access is not available</strong>
+                <p>This synthetic persona has purpose-limited integration access only.</p>
+              </div>
+            ) : (
+              <CaseworkWorkspace client={governedCaseworkClient} role={caseworkRole} />
+            )
           ) : view === 'INTEGRATIONS' ? (
             <IntegrationWorkspace client={governedIntegrationClient} />
           ) : (

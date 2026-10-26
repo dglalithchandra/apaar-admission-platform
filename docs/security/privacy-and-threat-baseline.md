@@ -10,18 +10,18 @@
 
 ## Initial threats and controls
 
-| Threat | Required control |
-|---|---|
-| Stolen institution account uploads false students | Phishing-resistant MFA where supported, maker-checker, device/session risk, batch receipt and anomaly review. |
-| CSV formula or parser injection | Strict parser, content-type and magic checks, formula neutralisation on exports, size/row limits and sandboxed malware scan. |
-| Exhausting the final approved seat concurrently | Database constraint/lock and transactional capacity reservation. |
-| Replay of a successful upload | Institution-scoped idempotency key and content hash. |
-| Enumeration through verification endpoint | Authorised clients, purpose binding, rate limits, non-enumerating responses and audit. |
-| Privileged bulk export | Just-in-time role, approval, watermarking, row limits, reason, alert and immutable audit. |
-| APAAR/API outage incorrectly rejects admission | Circuit breaker and explicit `TEMPORARILY_UNAVAILABLE`/pending state. |
-| Malicious or mistaken duplicate score | Explainable signals, thresholds, no autonomous adverse decision and review/appeal. |
-| Audit log alteration | Append-only event stream, restricted writer, integrity chaining/checkpoints and external retention. |
-| Signing-key theft | HSM/KMS, least privilege, rotation, revocation and offline recovery ceremony. |
+| Threat                                            | Required control                                                                                                             |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Stolen institution account uploads false students | Phishing-resistant MFA where supported, maker-checker, device/session risk, batch receipt and anomaly review.                |
+| CSV formula or parser injection                   | Strict parser, content-type and magic checks, formula neutralisation on exports, size/row limits and sandboxed malware scan. |
+| Exhausting the final approved seat concurrently   | Database constraint/lock and transactional capacity reservation.                                                             |
+| Replay of a successful upload                     | Institution-scoped idempotency key and content hash.                                                                         |
+| Enumeration through verification endpoint         | Authorised clients, purpose binding, rate limits, non-enumerating responses and audit.                                       |
+| Privileged bulk export                            | Just-in-time role, approval, watermarking, row limits, reason, alert and immutable audit.                                    |
+| APAAR/API outage incorrectly rejects admission    | Circuit breaker and explicit `TEMPORARILY_UNAVAILABLE`/pending state.                                                        |
+| Malicious or mistaken duplicate score             | Explainable signals, thresholds, no autonomous adverse decision and review/appeal.                                           |
+| Audit log alteration                              | Append-only event stream, restricted writer, integrity chaining/checkpoints and external retention.                          |
+| Signing-key theft                                 | HSM/KMS, least privilege, rotation, revocation and offline recovery ceremony.                                                |
 
 ## Logging rule
 
@@ -54,3 +54,12 @@ Logs contain request and record references, not full identifiers or uploaded row
 - External provider encoding/decoding is not implemented from guesses; an approved translator is required. Transient failures remain unavailable or rate-limited.
 - Verification requires purpose plus consent or approved legal basis, discloses only requested supported claims, expires and can be revoked append-only.
 - The local signing adapter is explicitly non-production. Production keys, issuer status and certificate profiles remain blocked.
+
+## Stage 6 operational controls
+
+- The gateway image uses a digest-pinned base, non-root runtime, read-only root filesystem, dropped capabilities and no-new-privileges in the local deployment proof.
+- Cross-origin access is allow-listed; security headers, upload/body limits, timeouts and actor rate limits are enforced before delegated work.
+- Authentication, authorization, tenant and origin failures emit sanitized security events. PostgreSQL guards those events against update/delete.
+- Metrics normalize dynamic paths and never use student, institution or academic-identity values as labels.
+- Secret scanning covers tracked and untracked repository text. Dependency audit, CycloneDX SBOM and recursive licence inventory are release evidence, not substitutes for signed provenance or organizational risk acceptance.
+- The recovery test uses only synthetic data. Production backup encryption, retention, geographical copies, key recovery, RTO and RPO require authority approval.

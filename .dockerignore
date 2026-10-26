@@ -1,0 +1,13 @@
+.git
+.codex
+node_modules
+**/dist
+**/coverage
+**/storybook-static
+reference/source
+private-inputs
+secrets
+data/real
+*.log
+.env*
+!.env.example

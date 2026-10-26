@@ -10,14 +10,18 @@ import {
   NotificationWorker,
   OidcBearerAuthenticator,
   SyntheticNotificationGateway,
+  SyntheticManifestIntegrityAdapter,
   SyntheticSigningAdapter,
   SyntheticTokenAuthenticator,
   VerificationService,
+  VerificationStatusService,
   authorize,
   loadGatewayConfig,
   manifestDigest,
   redactSecurityValue,
+  redactSecurityObject,
   type ApprovalImportManifest,
+  type ApprovalManifestRepository,
   type GatewayClock,
   type Principal,
 } from '../../src/index.js';
@@ -44,7 +48,7 @@ const integrator: Principal = {
 
 function manifest(overrides: Partial<ApprovalImportManifest> = {}): ApprovalImportManifest {
   const payload = overrides.payload ?? { approvedIntake: 60, academicYear: '2026-27' };
-  return {
+  const provisional: ApprovalImportManifest = {
     authority: 'SOURCE_CONFIRMED',
     campusId: 'SYNTH-CAMPUS-001',
     courseId: 'SYNTH-COURSE-001',
@@ -52,6 +56,7 @@ function manifest(overrides: Partial<ApprovalImportManifest> = {}): ApprovalImpo
     effectiveFrom: '2026-07-01',
     effectiveTo: '2027-06-30',
     importReference: 'SYNTH-APPROVAL-IMPORT-001',
+    integrity: { algorithm: 'SYNTH-PENDING', keyId: 'SYNTH-PENDING', signature: 'SYNTH-PENDING' },
     institutionId: 'SYNTH-INSTITUTION-001',
     payload,
     programmeId: 'SYNTH-PROGRAMME-001',
@@ -60,6 +65,9 @@ function manifest(overrides: Partial<ApprovalImportManifest> = {}): ApprovalImpo
     supersedesImportReference: null,
     ...overrides,
   };
+  if (overrides.integrity !== undefined) return provisional;
+  const { integrity: _integrity, ...unsigned } = provisional;
+  return { ...unsigned, integrity: new SyntheticManifestIntegrityAdapter('test').sign(unsigned) };
 }
 
 describe('authentication, authorization and configuration', () => {
@@ -96,9 +104,31 @@ describe('authentication, authorization and configuration', () => {
       loadGatewayConfig({ NODE_ENV: 'production', APAAR_MODE: 'authorized-http' }),
     ).toThrow(expect.objectContaining({ code: 'EXTERNAL_CONTRACT_UNAVAILABLE' }));
     expect(() => loadGatewayConfig({ NODE_ENV: 'unsupported' })).toThrow();
+    expect(() => loadGatewayConfig({ APAAR_MODE: 'unsupported' })).toThrow();
     expect(() => loadGatewayConfig({ GATEWAY_PORT: '99999' })).toThrow();
+    expect(
+      loadGatewayConfig({
+        ALLOWED_ORIGINS: 'https://one.example, https://two.example',
+        APAAR_MODE: 'authorized-http',
+        APAAR_OPERATION_URL: 'https://provider.example/operation',
+      }),
+    ).toMatchObject({
+      allowedOrigins: ['https://one.example', 'https://two.example'],
+      apaarMode: 'authorized-http',
+    });
     expect(redactSecurityValue('accessToken', 'SYNTH-TOKEN')).toBe('[REDACTED]');
     expect(redactSecurityValue('status', 'UP')).toBe('UP');
+    expect(
+      redactSecurityObject({
+        collection: [{ mobile: 'SYNTH-MOBILE' }, 'SYNTH-SAFE'],
+        nested: { academicIdentity: 'SYNTH-SHOULD-NOT-APPEAR', status: 'UP' },
+        token: 'SYNTH-TOKEN',
+      }),
+    ).toEqual({
+      collection: [{ mobile: '[REDACTED]' }, 'SYNTH-SAFE'],
+      nested: { academicIdentity: '[REDACTED]', status: 'UP' },
+      token: '[REDACTED]',
+    });
   });
 });
 
@@ -137,15 +167,21 @@ describe('academic identity anti-corruption layer', () => {
         status: 'VERIFIED' as const,
       }),
       encode: () => ({ opaque: 'SYNTH-OPAQUE' }),
+      validate: () => undefined,
     };
     const adapter = new AuthorizedAcademicIdentityAdapter({
       clock,
       fetch: successFetch,
       maximumAttempts: 2,
+      openDurationMs: 30_000,
       openAfterFailures: 2,
       operationUrl: 'https://provider.example.invalid/authorized-operation',
+      random: () => 0.5,
+      retryBaseDelayMs: 1,
+      retryJitterRatio: 0.2,
       timeoutMs: 100,
       translator,
+      wait: () => Promise.resolve(),
     });
     await expect(
       adapter.verify({
@@ -160,10 +196,15 @@ describe('academic identity anti-corruption layer', () => {
       clock,
       fetch: vi.fn<typeof fetch>().mockResolvedValue(new Response('', { status: 503 })),
       maximumAttempts: 2,
+      openDurationMs: 30_000,
       openAfterFailures: 2,
       operationUrl: 'https://provider.example.invalid/authorized-operation',
+      random: () => 0.5,
+      retryBaseDelayMs: 1,
+      retryJitterRatio: 0.2,
       timeoutMs: 100,
       translator,
+      wait: () => Promise.resolve(),
     });
     await expect(
       unavailable.verify({
@@ -184,10 +225,15 @@ describe('academic identity anti-corruption layer', () => {
       clock,
       fetch: vi.fn<typeof fetch>().mockResolvedValue(new Response('', { status: 429 })),
       maximumAttempts: 1,
+      openDurationMs: 30_000,
       openAfterFailures: 5,
       operationUrl: 'https://provider.example.invalid/authorized-operation',
+      random: () => 0.5,
+      retryBaseDelayMs: 1,
+      retryJitterRatio: 0.2,
       timeoutMs: 100,
       translator,
+      wait: () => Promise.resolve(),
     });
     await expect(
       limited.verify({
@@ -202,10 +248,15 @@ describe('academic identity anti-corruption layer', () => {
           clock,
           fetch: successFetch,
           maximumAttempts: 1,
+          openDurationMs: 30_000,
           openAfterFailures: 1,
           operationUrl: 'http://unsafe.invalid',
+          random: () => 0.5,
+          retryBaseDelayMs: 1,
+          retryJitterRatio: 0.2,
           timeoutMs: 100,
           translator,
+          wait: () => Promise.resolve(),
         }),
     ).toThrow();
   });
@@ -213,7 +264,10 @@ describe('academic identity anti-corruption layer', () => {
 
 describe('approval, notification and verification services', () => {
   it('checks approval digests and replays exact imports without granting proposed authority', async () => {
-    const service = new ApprovalImportService(new InMemoryApprovalManifestRepository());
+    const service = new ApprovalImportService(
+      new InMemoryApprovalManifestRepository(),
+      new SyntheticManifestIntegrityAdapter('test'),
+    );
     await expect(service.import(manifest(), integrator)).resolves.toEqual({
       importReference: 'SYNTH-APPROVAL-IMPORT-001',
       replayed: false,
@@ -243,6 +297,83 @@ describe('approval, notification and verification services', () => {
         integrator,
       ),
     ).rejects.toMatchObject({ code: 'EFFECTIVE_RANGE_INVALID' });
+    await expect(
+      service.import(
+        manifest({
+          importReference: 'SYNTH-APPROVAL-IMPORT-005',
+          integrity: {
+            algorithm: 'SYNTHETIC-SHA256-NOT-FOR-PRODUCTION',
+            keyId: 'SYNTH-MANIFEST-KEY-001',
+            signature: '0'.repeat(64),
+          },
+        }),
+        integrator,
+      ),
+    ).rejects.toMatchObject({ code: 'IMPORT_INTEGRITY_INVALID' });
+    expect(() => new SyntheticManifestIntegrityAdapter('production')).toThrow(
+      expect.objectContaining({ code: 'UNSAFE_PRODUCTION_CONFIGURATION' }),
+    );
+  });
+
+  it('validates approval references and resolves concurrent import races safely', async () => {
+    const integrity = new SyntheticManifestIntegrityAdapter('test');
+    const repository = new InMemoryApprovalManifestRepository();
+    const service = new ApprovalImportService(repository, integrity);
+    await expect(
+      service.import(manifest({ importReference: 'not-valid' }), integrator),
+    ).rejects.toMatchObject({ code: 'IMPORT_REFERENCE_INVALID' });
+    await expect(
+      service.import(
+        manifest({
+          importReference: 'SYNTH-APPROVAL-IMPORT-SUPERSESSION',
+          supersedesImportReference: 'not-valid',
+        }),
+        integrator,
+      ),
+    ).rejects.toMatchObject({ code: 'SUPERSEDED_IMPORT_REFERENCE_INVALID' });
+
+    const accepted = manifest({ importReference: 'SYNTH-APPROVAL-CONCURRENT-001' });
+    const exactRace: ApprovalManifestRepository = {
+      findApproval: () =>
+        Promise.resolve({
+          digest: accepted.digestSha256,
+          result: {
+            importReference: accepted.importReference,
+            replayed: false,
+            status: 'IMPORTED',
+          },
+        }),
+      saveApproval: () =>
+        Promise.reject(Object.assign(new Error('SYNTH-CONCURRENT-UNIQUE'), { code: '23505' })),
+    };
+    await expect(
+      new ApprovalImportService(exactRace, integrity).import(accepted, integrator),
+    ).resolves.toMatchObject({ replayed: true });
+
+    const conflictingRace: ApprovalManifestRepository = {
+      findApproval: () =>
+        Promise.resolve({
+          digest: '0'.repeat(64),
+          result: {
+            importReference: accepted.importReference,
+            replayed: false,
+            status: 'IMPORTED',
+          },
+        }),
+      saveApproval: () =>
+        Promise.reject(Object.assign(new Error('SYNTH-CONCURRENT-UNIQUE'), { code: '23505' })),
+    };
+    await expect(
+      new ApprovalImportService(conflictingRace, integrity).import(accepted, integrator),
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+
+    const unexpectedFailure: ApprovalManifestRepository = {
+      findApproval: () => Promise.resolve(null),
+      saveApproval: () => Promise.reject(new Error('SYNTH-STORAGE-FAILURE')),
+    };
+    await expect(
+      new ApprovalImportService(unexpectedFailure, integrity).import(accepted, integrator),
+    ).rejects.toThrow('SYNTH-STORAGE-FAILURE');
   });
 
   it('delivers, retries and dead-letters informational synthetic notifications', async () => {
@@ -267,6 +398,37 @@ describe('approval, notification and verification services', () => {
     await expect(worker.processOne(clock.now())).resolves.toMatchObject({ state: 'DEAD_LETTER' });
     await expect(worker.processOne(clock.now())).resolves.toBeNull();
     expect(repository.get('SYNTH-NOTIFICATION-002')?.state).toBe('DEAD_LETTER');
+  });
+
+  it('schedules retryable notifications and dead-letters rejected destinations', async () => {
+    const repository = new InMemoryNotificationRepository([
+      {
+        attemptCount: 0,
+        destinationReference: 'SYNTH-DESTINATION-RETRY',
+        messageCode: 'SYNTH-CASE-UPDATED',
+        notificationId: 'SYNTH-NOTIFICATION-RETRY',
+        state: 'PENDING',
+      },
+      {
+        attemptCount: 0,
+        destinationReference: 'EXTERNAL-DESTINATION',
+        messageCode: 'SYNTH-CASE-UPDATED',
+        notificationId: 'SYNTH-NOTIFICATION-REJECTED',
+        state: 'PENDING',
+      },
+    ]);
+    const worker = new NotificationWorker(
+      repository,
+      new SyntheticNotificationGateway(),
+      3,
+      () => 1,
+    );
+    await expect(worker.processOne(clock.now())).resolves.toMatchObject({ state: 'RETRYABLE' });
+    expect(repository.get('SYNTH-NOTIFICATION-RETRY')?.state).toBe('RETRYABLE');
+    await expect(worker.processOne(clock.now())).resolves.toMatchObject({ state: 'RETRYABLE' });
+    await expect(worker.processOne(clock.now())).resolves.toMatchObject({ state: 'DEAD_LETTER' });
+    await expect(worker.processOne(clock.now())).resolves.toMatchObject({ state: 'DEAD_LETTER' });
+    expect(repository.get('SYNTH-NOTIFICATION-REJECTED')?.state).toBe('DEAD_LETTER');
   });
 
   it('issues minimal, expiring, idempotent synthetic verification receipts', async () => {
@@ -323,5 +485,61 @@ describe('approval, notification and verification services', () => {
         verifier,
       ),
     ).rejects.toMatchObject({ code: 'ADMISSION_NOT_FOUND' });
+  });
+
+  it('reports active, expired and append-only revoked verification status', async () => {
+    let now = '2026-10-26T12:00:00.000Z';
+    const mutableClock: GatewayClock = { now: () => now };
+    const receipts = new InMemoryVerificationReceiptRepository();
+    const service = new VerificationService(
+      new InMemoryAdmissionFacts(
+        new Map([
+          [
+            'SYNTH-REGISTRATION-STATUS-001',
+            {
+              academicYear: '2026-27',
+              admissionReference: 'SYNTH-REGISTRATION-STATUS-001',
+              currentStatus: 'ACCEPTED',
+              institutionReference: 'SYNTH-INSTITUTION-001',
+              programmeReference: 'SYNTH-PROGRAMME-001',
+            },
+          ],
+        ]),
+      ),
+      receipts,
+      new SyntheticSigningAdapter(),
+      mutableClock,
+      () => 'SYNTH-VERIFICATION-STATUS-001',
+    );
+    await service.create(
+      {
+        admissionReference: 'SYNTH-REGISTRATION-STATUS-001',
+        consentReference: 'SYNTH-CONSENT-001',
+        idempotencyKey: 'SYNTH-IDEMPOTENCY-STATUS-001',
+        legalBasisReference: null,
+        purpose: 'SYNTH-STATUS-CHECK',
+        requestedClaims: ['ADMISSION_EXISTS'],
+      },
+      verifier,
+    );
+    const status = new VerificationStatusService(
+      receipts,
+      mutableClock,
+      new SyntheticSigningAdapter(),
+    );
+    await expect(status.get('SYNTH-VERIFICATION-STATUS-001')).resolves.toMatchObject({
+      status: 'ACTIVE',
+    });
+    now = '2026-10-26T12:16:00.000Z';
+    await expect(status.get('SYNTH-VERIFICATION-STATUS-001')).resolves.toMatchObject({
+      status: 'EXPIRED',
+    });
+    await status.revoke('SYNTH-VERIFICATION-STATUS-001', 'SYNTH-REASON', integrator);
+    await expect(status.get('SYNTH-VERIFICATION-STATUS-001')).resolves.toMatchObject({
+      status: 'REVOKED',
+    });
+    await expect(status.get('SYNTH-VERIFICATION-MISSING')).rejects.toMatchObject({
+      code: 'VERIFICATION_NOT_FOUND',
+    });
   });
 });

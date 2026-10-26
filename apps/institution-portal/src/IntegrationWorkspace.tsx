@@ -131,6 +131,58 @@ export function IntegrationWorkspace({
           >
             Issue synthetic verification receipt
           </button>
+          <button
+            className="button button--secondary"
+            onClick={() =>
+              void run(async () => {
+                const result = await client.simulateNotification('PENDING');
+                setNotice(
+                  `Notification delivery is ${result.state.toLowerCase()}; the regulatory decision remains committed.`,
+                );
+              })
+            }
+            type="button"
+          >
+            Preview notification pending
+          </button>
+          <button
+            className="button button--secondary"
+            onClick={() =>
+              void run(async () => {
+                const result = await client.simulateNotification('DEAD_LETTER');
+                setNotice(
+                  `Notification delivery is ${result.state.toLowerCase().replace('_', ' ')} and requires operational review.`,
+                );
+              })
+            }
+            type="button"
+          >
+            Preview notification failure
+          </button>
+          <button
+            className="button button--secondary"
+            onClick={() =>
+              void run(async () => {
+                setReceipt(await client.simulateReceiptStatus('EXPIRED'));
+                setNotice('The synthetic receipt is expired and must not be accepted as current.');
+              })
+            }
+            type="button"
+          >
+            Preview expired receipt
+          </button>
+          <button
+            className="button button--secondary"
+            onClick={() =>
+              void run(async () => {
+                setReceipt(await client.simulateReceiptStatus('REVOKED'));
+                setNotice('The synthetic receipt is revoked and must not be accepted.');
+              })
+            }
+            type="button"
+          >
+            Preview revoked receipt
+          </button>
         </div>
       </section>
 
@@ -150,6 +202,10 @@ export function IntegrationWorkspace({
           <p className="step">Synthetic verification receipt</p>
           <h2 id="verification-receipt-heading">{receipt.verificationReference}</h2>
           <dl>
+            <div>
+              <dt>Status</dt>
+              <dd>{receipt.status}</dd>
+            </div>
             <div>
               <dt>Claims</dt>
               <dd>{Object.keys(receipt.claims).join(', ')}</dd>

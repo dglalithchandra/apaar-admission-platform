@@ -17,3 +17,10 @@ Confirm requester organization, purpose, claim allow-list and consent/legal basi
 - `npm run test:coverage -w @apaar-platform/integration-gateway`
 - `npm run test:e2e:gateway`
 - `npm run validate:contracts`
+- `npm run test:container`
+- `npm run test:recovery`
+- `npm run security:scan`
+- `npm run security:licenses`
+- `npm run security:sbom`
+
+For local load assurance, start the compose stack, run `npm run load:smoke`, inspect auditor-only `/metrics`, and always remove the synthetic database volume afterward. Production incident and rollback handling is in `deployment-and-rollback.md`; recovery gates are in `disaster-recovery.md`.

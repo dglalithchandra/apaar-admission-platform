@@ -12,6 +12,7 @@ export class DemoIntegrationClient implements IntegrationClient {
       claims: { ADMISSION_EXISTS: true, CURRENT_STATUS: 'ACCEPTED' },
       expiresAt: '2026-10-26T12:15:00.000Z',
       keyId: 'SYNTH-SIGNING-KEY-001',
+      status: 'ACTIVE',
       verificationReference: 'SYNTH-VERIFICATION-PORTAL-001',
     });
   }
@@ -38,5 +39,17 @@ export class DemoIntegrationClient implements IntegrationClient {
 
   public simulateProviderOutage(): Promise<{ readonly status: 'TEMPORARILY_UNAVAILABLE' }> {
     return Promise.resolve({ status: 'TEMPORARILY_UNAVAILABLE' });
+  }
+
+  public simulateNotification(
+    state: 'PENDING' | 'DEAD_LETTER',
+  ): Promise<{ readonly state: 'PENDING' | 'DEAD_LETTER' }> {
+    return Promise.resolve({ state });
+  }
+
+  public async simulateReceiptStatus(
+    status: 'EXPIRED' | 'REVOKED',
+  ): Promise<IntegrationVerificationReceipt> {
+    return { ...(await this.createSyntheticVerification()), status };
   }
 }

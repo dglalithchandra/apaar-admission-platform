@@ -43,4 +43,3 @@ These drafts must not be submitted under an individual's name unless that indivi
 ## Implemented local adapter boundary
 
 The Stage 5 adapter now enforces HTTPS, correlation, timeout, bounded retry and circuit protection. Request encoding and response decoding are injected and intentionally absent until the approved provider contract is supplied. The deterministic simulator covers verified, not-found, mismatch, unavailable, rate-limited, not-eligible, manual-review and unverified states. It is not evidence of API Setu connectivity.
-

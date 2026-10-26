@@ -38,6 +38,31 @@ function pickClaims(
   return Object.fromEntries(claims.map((claim) => [claim, available[claim]]));
 }
 
+const ALLOWED_CLAIMS = new Set<VerificationClaim>([
+  'ACADEMIC_YEAR',
+  'ADMISSION_EXISTS',
+  'CURRENT_STATUS',
+  'INSTITUTION',
+  'PROGRAMME',
+]);
+
+export function verificationSigningPayload(
+  receipt: Omit<VerificationReceipt, 'algorithm' | 'keyId' | 'signature'>,
+): string {
+  return JSON.stringify({
+    claims: Object.fromEntries(
+      Object.entries(receipt.claims).sort(([left], [right]) => left.localeCompare(right)),
+    ),
+    expiresAt: receipt.expiresAt,
+    issuedAt: receipt.issuedAt,
+    legalBasisReference: receipt.legalBasisReference,
+    purpose: receipt.purpose,
+    requesterOrganisation: receipt.requesterOrganisation,
+    status: 'ACTIVE',
+    verificationReference: receipt.verificationReference,
+  });
+}
+
 export class VerificationService {
   public constructor(
     private readonly facts: AdmissionFactsPort,
@@ -56,6 +81,16 @@ export class VerificationService {
         'VERIFICATION_PURPOSE_REQUIRED',
         422,
         'Purpose and claims are required.',
+      );
+    }
+    if (
+      new Set(input.requestedClaims).size !== input.requestedClaims.length ||
+      !input.requestedClaims.every((claim) => ALLOWED_CLAIMS.has(claim))
+    ) {
+      throw new GatewayProblem(
+        'VERIFICATION_CLAIMS_INVALID',
+        422,
+        'The requested verification claims are invalid.',
       );
     }
     const legalBasis = input.consentReference ?? input.legalBasisReference;
@@ -92,10 +127,55 @@ export class VerificationService {
       status: 'ACTIVE' as const,
       verificationReference: this.nextReference(),
     };
-    const signed = await this.signer.sign(JSON.stringify(unsigned));
+    const signed = await this.signer.sign(verificationSigningPayload(unsigned));
     const receipt: VerificationReceipt = { ...unsigned, ...signed };
     await this.receipts.save(input.idempotencyKey, requestHash, receipt);
     return receipt;
+  }
+}
+
+export class VerificationStatusService {
+  public constructor(
+    private readonly receipts: VerificationReceiptPort,
+    private readonly clock: GatewayClock,
+    private readonly signer: SigningPort,
+  ) {}
+
+  public async get(reference: string): Promise<VerificationReceipt> {
+    const receipt = await this.receipts.findByReference(reference);
+    if (receipt === null) {
+      throw new GatewayProblem('VERIFICATION_NOT_FOUND', 404, 'The verification was not found.');
+    }
+    const { algorithm, keyId, signature, ...unsigned } = receipt;
+    if (
+      !(await this.signer.verify(verificationSigningPayload(unsigned), {
+        algorithm,
+        keyId,
+        signature,
+      }))
+    ) {
+      throw new GatewayProblem(
+        'VERIFICATION_SIGNATURE_INVALID',
+        502,
+        'The verification receipt signature is invalid.',
+      );
+    }
+    if (receipt.status === 'REVOKED') return receipt;
+    return Date.parse(receipt.expiresAt) <= Date.parse(this.clock.now())
+      ? { ...receipt, status: 'EXPIRED' }
+      : receipt;
+  }
+
+  public async revoke(reference: string, reason: string, principal: Principal): Promise<void> {
+    if (reason.trim() === '') {
+      throw new GatewayProblem(
+        'REVOCATION_REASON_REQUIRED',
+        422,
+        'A revocation reason is required.',
+      );
+    }
+    await this.get(reference);
+    await this.receipts.revoke(reference, reason, principal.actorReference, this.clock.now());
   }
 }
 
@@ -108,6 +188,17 @@ export class SyntheticSigningAdapter implements SigningPort {
       keyId: 'SYNTH-SIGNING-KEY-001',
       signature: createHash('sha256').update(`SYNTHETIC:${payload}`).digest('hex'),
     });
+  }
+
+  public verify(
+    payload: string,
+    signed: { readonly algorithm: string; readonly keyId: string; readonly signature: string },
+  ): Promise<boolean> {
+    return Promise.resolve(
+      signed.algorithm === 'SYNTHETIC-SHA256-NOT-FOR-PRODUCTION' &&
+        signed.keyId === 'SYNTH-SIGNING-KEY-001' &&
+        signed.signature === createHash('sha256').update(`SYNTHETIC:${payload}`).digest('hex'),
+    );
   }
 }
 
@@ -129,6 +220,30 @@ export class InMemoryVerificationReceiptRepository implements VerificationReceip
     receipt: VerificationReceipt,
   ): Promise<void> {
     this.receipts.set(idempotencyKey, { hash: requestHash, receipt });
+    return Promise.resolve();
+  }
+
+  public findByReference(verificationReference: string): Promise<VerificationReceipt | null> {
+    for (const value of this.receipts.values()) {
+      if (value.receipt.verificationReference === verificationReference) {
+        return Promise.resolve(value.receipt);
+      }
+    }
+    return Promise.resolve(null);
+  }
+
+  public revoke(
+    verificationReference: string,
+    _reason: string,
+    _actor: string,
+    _at: string,
+  ): Promise<void> {
+    for (const [key, value] of this.receipts.entries()) {
+      if (value.receipt.verificationReference === verificationReference) {
+        this.receipts.set(key, { ...value, receipt: { ...value.receipt, status: 'REVOKED' } });
+        return Promise.resolve();
+      }
+    }
     return Promise.resolve();
   }
 }

@@ -29,17 +29,17 @@ The portal screenshots visibly expose fields such as Student ID, title, first/mi
 
 ## Product and operational weaknesses to avoid
 
-| Current characteristic | User risk | Requirement for the replacement |
-|---|---|---|
-| Macro-enabled workbook and `D:`-drive-specific generation | Platform dependence, security warnings, fragile local setup and poor accessibility | Plain CSV/XLSX plus browser/API validation; no macro or fixed-drive dependency. |
-| Fixed column/row structure that must not be changed | Small formatting mistakes can invalidate a submission | Versioned schemas, downloadable templates, tolerant parsing and explicit migration guidance. |
-| Validation is split between the workbook and post-upload error file | Operators discover important failures late and repeat work | Preflight validation, server-side authoritative validation and identical rule codes in UI/API. |
-| Successful rows must be manually excluded from retry | Replays can create duplicates | Idempotent batch and row keys; a safe “retry failed rows” action. |
-| Duplicate handling is a human-applied flag after insertion | Duplicates may persist and statistics may already be wrong | Prevent exact duplicates; create review cases for probable identity/overlap matches. |
-| Course can be entered with blank ID when missing | Free-text course identity can drift from the approval master | Controlled unresolved-course case; never silently count it against a guessed approval. |
-| General enrolment appears as course totals | No individual identity or provenance for verification | Derive totals from accepted student-level records, reconciled against approval snapshots. |
-| Final submission disables the documented button | Correction/reopening path is unclear | Explicit states, maker-checker submission, authorised reopening and immutable audit history. |
-| Error result is an attachment the user must inspect | Hard to triage large batches and easy to lose context | In-browser error summary, filterable row issues, downloadable correction file and stable receipt. |
+| Current characteristic                                              | User risk                                                                          | Requirement for the replacement                                                                   |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Macro-enabled workbook and `D:`-drive-specific generation           | Platform dependence, security warnings, fragile local setup and poor accessibility | Plain CSV/XLSX plus browser/API validation; no macro or fixed-drive dependency.                   |
+| Fixed column/row structure that must not be changed                 | Small formatting mistakes can invalidate a submission                              | Versioned schemas, downloadable templates, tolerant parsing and explicit migration guidance.      |
+| Validation is split between the workbook and post-upload error file | Operators discover important failures late and repeat work                         | Preflight validation, server-side authoritative validation and identical rule codes in UI/API.    |
+| Successful rows must be manually excluded from retry                | Replays can create duplicates                                                      | Idempotent batch and row keys; a safe “retry failed rows” action.                                 |
+| Duplicate handling is a human-applied flag after insertion          | Duplicates may persist and statistics may already be wrong                         | Prevent exact duplicates; create review cases for probable identity/overlap matches.              |
+| Course can be entered with blank ID when missing                    | Free-text course identity can drift from the approval master                       | Controlled unresolved-course case; never silently count it against a guessed approval.            |
+| General enrolment appears as course totals                          | No individual identity or provenance for verification                              | Derive totals from accepted student-level records, reconciled against approval snapshots.         |
+| Final submission disables the documented button                     | Correction/reopening path is unclear                                               | Explicit states, maker-checker submission, authorised reopening and immutable audit history.      |
+| Error result is an attachment the user must inspect                 | Hard to triage large batches and easy to lose context                              | In-browser error summary, filterable row issues, downloadable correction file and stable receipt. |
 
 ## Availability observations
 
@@ -56,4 +56,3 @@ These observations are availability evidence only. They are not used to score th
 - the current general-enrolment screen's complete field definitions and reopening process;
 - operator observation from at least three institution types;
 - AICTE reviewer workflow, approval-master schema and duplicate-resolution procedure.
-

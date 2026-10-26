@@ -39,24 +39,34 @@ export interface AuthorizedProviderTranslator {
     readonly academicIdentity: string;
     readonly purpose: 'ADMISSION_LINKING' | 'CORRECTION_REVIEW';
   }): unknown;
+  validate(status: number, body: unknown): void;
 }
 
 export interface AuthorizedAcademicIdentityAdapterOptions {
   readonly clock: GatewayClock;
   readonly fetch: typeof fetch;
   readonly maximumAttempts: number;
+  readonly openDurationMs: number;
   readonly openAfterFailures: number;
   readonly operationUrl: string;
+  readonly random: () => number;
+  readonly retryBaseDelayMs: number;
+  readonly retryJitterRatio: number;
   readonly timeoutMs: number;
   readonly translator: AuthorizedProviderTranslator;
+  readonly wait: (milliseconds: number) => Promise<void>;
+  readonly allowInsecureLoopbackForTests?: boolean;
 }
 
 export class AuthorizedAcademicIdentityAdapter implements AcademicIdentityPort {
   private failures = 0;
-  private circuitOpen = false;
+  private openedAt: number | null = null;
 
   public constructor(private readonly options: AuthorizedAcademicIdentityAdapterOptions) {
-    if (!options.operationUrl.startsWith('https://')) {
+    const loopbackTestUrl =
+      options.allowInsecureLoopbackForTests === true &&
+      /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(options.operationUrl);
+    if (!options.operationUrl.startsWith('https://') && !loopbackTestUrl) {
       throw new GatewayProblem(
         'EXTERNAL_CONTRACT_UNAVAILABLE',
         500,
@@ -70,7 +80,10 @@ export class AuthorizedAcademicIdentityAdapter implements AcademicIdentityPort {
     readonly correlationReference: string;
     readonly purpose: 'ADMISSION_LINKING' | 'CORRECTION_REVIEW';
   }): Promise<AcademicIdentityResult> {
-    if (this.circuitOpen) return this.unavailable();
+    const now = Date.parse(this.options.clock.now());
+    if (this.openedAt !== null && now - this.openedAt < this.options.openDurationMs) {
+      return this.unavailable();
+    }
     for (let attempt = 1; attempt <= this.options.maximumAttempts; attempt += 1) {
       try {
         const response = await this.options.fetch(this.options.operationUrl, {
@@ -85,24 +98,29 @@ export class AuthorizedAcademicIdentityAdapter implements AcademicIdentityPort {
         if (response.status === 429) {
           this.recordFailure();
           if (attempt === this.options.maximumAttempts) return this.rateLimited();
+          await this.waitBeforeRetry(attempt);
           continue;
         }
         if (response.status >= 500) {
           this.recordFailure();
           if (attempt === this.options.maximumAttempts) return this.unavailable();
+          await this.waitBeforeRetry(attempt);
           continue;
         }
         const body = (await response.json()) as unknown;
+        this.options.translator.validate(response.status, body);
         const result = this.options.translator.decode(
           response.status,
           body,
           this.options.clock.now(),
         );
         this.failures = 0;
+        this.openedAt = null;
         return result;
       } catch {
         this.recordFailure();
         if (attempt === this.options.maximumAttempts) return this.unavailable();
+        await this.waitBeforeRetry(attempt);
       }
     }
     return this.unavailable();
@@ -110,7 +128,15 @@ export class AuthorizedAcademicIdentityAdapter implements AcademicIdentityPort {
 
   private recordFailure(): void {
     this.failures += 1;
-    if (this.failures >= this.options.openAfterFailures) this.circuitOpen = true;
+    if (this.failures >= this.options.openAfterFailures) {
+      this.openedAt = Date.parse(this.options.clock.now());
+    }
+  }
+
+  private async waitBeforeRetry(attempt: number): Promise<void> {
+    const base = this.options.retryBaseDelayMs * 2 ** (attempt - 1);
+    const jitter = base * this.options.retryJitterRatio * (this.options.random() * 2 - 1);
+    await this.options.wait(Math.max(0, Math.round(base + jitter)));
   }
 
   private unavailable(): AcademicIdentityResult {

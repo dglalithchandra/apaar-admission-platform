@@ -15,6 +15,27 @@ export default tseslint.config(
     ],
   },
   eslint.configs.recommended,
+  {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        fetch: 'readonly',
+        performance: 'readonly',
+        process: 'readonly',
+        setTimeout: 'readonly',
+      },
+    },
+  },
+  {
+    files: ['tests/load/**/*.js'],
+    languageOptions: {
+      globals: {
+        __ENV: 'readonly',
+        __ITER: 'readonly',
+        __VU: 'readonly',
+      },
+    },
+  },
   ...tseslint.configs.strictTypeChecked.map((config) => ({
     ...config,
     files: ['services/**/*.ts', 'apps/**/*.{ts,tsx}'],

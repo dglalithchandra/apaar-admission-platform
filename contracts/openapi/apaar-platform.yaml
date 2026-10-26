@@ -65,6 +65,18 @@ paths:
               schema: { $ref: '#/components/schemas/DependencyStatus' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /metrics:
+    get:
+      operationId: getMetrics
+      summary: Export identifier-safe gateway metrics to authorised operators
+      responses:
+        '200':
+          description: Prometheus text exposition without student identifiers
+          content:
+            text/plain:
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /v1/integration/approval-imports:
     post:
       operationId: importApprovalManifest
@@ -853,38 +865,54 @@ paths:
           description: Purpose-limited result
           content:
             application/json:
-              schema:
-                type: object
-                required:
-                  [
-                    verificationReference,
-                    issuedAt,
-                    expiresAt,
-                    claims,
-                    requesterOrganisation,
-                    purpose,
-                    legalBasisReference,
-                    keyId,
-                    algorithm,
-                    signature,
-                    status,
-                  ]
-                properties:
-                  verificationReference: { type: string }
-                  issuedAt: { type: string, format: date-time }
-                  expiresAt: { type: string, format: date-time }
-                  claims: { type: object, additionalProperties: true }
-                  requesterOrganisation: { type: string }
-                  purpose: { type: string }
-                  legalBasisReference: { type: string }
-                  keyId: { type: string }
-                  algorithm: { type: string }
-                  signature: { type: string }
-                  status: { type: string, enum: [ACTIVE, REVOKED] }
+              schema: { $ref: '#/components/schemas/VerificationReceipt' }
         '403':
           description: Caller is not authorised for the requested purpose or claims
         '422':
           $ref: '#/components/responses/ValidationProblem'
+  /v1/verifications/{verificationReference}:
+    get:
+      operationId: getVerificationReceipt
+      summary: Read the current status of a purpose-limited verification receipt
+      parameters:
+        - name: verificationReference
+          in: path
+          required: true
+          schema: { type: string, pattern: '^SYNTH-[A-Z0-9-]+$' }
+      responses:
+        '200':
+          description: Active, expired or revoked receipt
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VerificationReceipt' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/verifications/{verificationReference}/revocations:
+    post:
+      operationId: revokeVerificationReceipt
+      summary: Append an authorised revocation for a verification receipt
+      parameters:
+        - name: verificationReference
+          in: path
+          required: true
+          schema: { type: string, pattern: '^SYNTH-[A-Z0-9-]+$' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 1, maxLength: 200 }
+      responses:
+        '204': { description: Revocation recorded or already present }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
 components:
   securitySchemes:
     oauth2:
@@ -992,6 +1020,35 @@ components:
           schema:
             $ref: '#/components/schemas/CaseView'
   schemas:
+    VerificationReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          verificationReference,
+          issuedAt,
+          expiresAt,
+          claims,
+          requesterOrganisation,
+          purpose,
+          legalBasisReference,
+          keyId,
+          algorithm,
+          signature,
+          status,
+        ]
+      properties:
+        verificationReference: { type: string }
+        issuedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        claims: { type: object, additionalProperties: true }
+        requesterOrganisation: { type: string }
+        purpose: { type: string }
+        legalBasisReference: { type: string }
+        keyId: { type: string }
+        algorithm: { type: string }
+        signature: { type: string }
+        status: { type: string, enum: [ACTIVE, EXPIRED, REVOKED] }
     DependencyState:
       type: string
       enum: [UP, DEGRADED, DISABLED]
@@ -1016,6 +1073,7 @@ components:
       required:
         [
           importReference,
+          integrity,
           sourceSystem,
           sourceVersion,
           digestSha256,
@@ -1031,6 +1089,14 @@ components:
         ]
       properties:
         importReference: { type: string, pattern: '^SYNTH-[A-Z0-9-]+$' }
+        integrity:
+          type: object
+          additionalProperties: false
+          required: [algorithm, keyId, signature]
+          properties:
+            algorithm: { type: string, minLength: 1, maxLength: 128 }
+            keyId: { type: string, minLength: 1, maxLength: 128 }
+            signature: { type: string, minLength: 32, maxLength: 8192 }
         sourceSystem: { type: string, minLength: 1, maxLength: 128 }
         sourceVersion: { type: string, minLength: 1, maxLength: 128 }
         digestSha256: { type: string, pattern: '^[a-f0-9]{64}$' }

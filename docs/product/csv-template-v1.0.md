@@ -14,19 +14,19 @@ This is a product-owned contract for the Admission Registry. It is not an offici
 
 ## Columns
 
-| Column | Meaning |
-| --- | --- |
-| `template_version` | Must be `1.0` for every row. |
-| `record_key` | Institution-controlled stable row key, unique inside the file. |
-| `student_reference` | Opaque institution reference; do not provide a name, Aadhaar number or contact detail. |
-| `academic_identity_reference` | Opaque value passed to the configured identity verifier. It is not a verification outcome. |
-| `institution_id`, `campus_id`, `programme_id`, `course_id` | Product identifiers matching the effective approval snapshot. |
-| `academic_year` | `YYYY-YY`, for example `2026-27`. |
-| `admission_date` | ISO date `YYYY-MM-DD`. |
-| `category` | `ORDINARY`, `NRI`, `FOREIGN_NATIONAL`, `OCI`, `GULF_WORKER_CHILD`, `LATERAL_ENTRY`, `TFW`, `PM_USPY` or `OTHER_SUPERNUMERARY`. |
-| `lateral_capacity_source` | Empty except for lateral admission; then one documented lateral bucket. |
-| `nri`, `oci`, `foreign_national`, `gulf_worker_child` | Lowercase `true` or `false`. |
-| `eligibility_evidence` | `VERIFIED`, `PENDING` or `MISSING`; the Stage 2 policy decides the consequence. |
+| Column                                                     | Meaning                                                                                                                        |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `template_version`                                         | Must be `1.0` for every row.                                                                                                   |
+| `record_key`                                               | Institution-controlled stable row key, unique inside the file.                                                                 |
+| `student_reference`                                        | Opaque institution reference; do not provide a name, Aadhaar number or contact detail.                                         |
+| `academic_identity_reference`                              | Opaque value passed to the configured identity verifier. It is not a verification outcome.                                     |
+| `institution_id`, `campus_id`, `programme_id`, `course_id` | Product identifiers matching the effective approval snapshot.                                                                  |
+| `academic_year`                                            | `YYYY-YY`, for example `2026-27`.                                                                                              |
+| `admission_date`                                           | ISO date `YYYY-MM-DD`.                                                                                                         |
+| `category`                                                 | `ORDINARY`, `NRI`, `FOREIGN_NATIONAL`, `OCI`, `GULF_WORKER_CHILD`, `LATERAL_ENTRY`, `TFW`, `PM_USPY` or `OTHER_SUPERNUMERARY`. |
+| `lateral_capacity_source`                                  | Empty except for lateral admission; then one documented lateral bucket.                                                        |
+| `nri`, `oci`, `foreign_national`, `gulf_worker_child`      | Lowercase `true` or `false`.                                                                                                   |
+| `eligibility_evidence`                                     | `VERIFIED`, `PENDING` or `MISSING`; the Stage 2 policy decides the consequence.                                                |
 
 No names, dates of birth, Aadhaar numbers, addresses, emails or phone numbers belong in the template. The service performs only unambiguous structural conversion; it never silently repairs values.
 

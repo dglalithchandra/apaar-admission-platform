@@ -44,15 +44,17 @@ Conflicts, corrections, cancellations, transfers, appeals, maker-checker, policy
 
 Exit condition satisfied on 26 October 2026: `npm run check`, all 43 real-PostgreSQL integration tests across Stages 2–4, the production portal build, Storybook build, contract validation, `npm audit` and `git diff --check` pass. All committed fixtures and browser inputs use synthetic identifiers.
 
-## Stage 5 — authorised integrations
+## Stage 5 — authorised integrations (local engineering complete; authority connections blocked)
 
 Connect approved AICTE feed, APAAR/API Setu sandbox then production, SSO, notification gateway, existing institutional systems and approved signing service. Each integration gets a simulator, contract test and outage mode.
 
-Local foundation implemented on 26 October 2026: authenticated Node HTTP gateway, deny-by-default role/tenant rules, production-shaped OIDC and APAAR ports, deterministic simulators, digest-checked approval import boundary, retry/dead-letter notification worker, minimal expiring verification receipts, synthetic signing, migration 0004 and portal integration-assurance states. Stage 5 remains **in progress**, because no live provider contract, credential, SSO tenant, authoritative approval feed, notification gateway or signing authority is available. The gateway currently exercises three representative Stage 4 HTTP handoffs; the remaining OpenAPI controller mappings are required before production release.
+Local engineering completed on 26 October 2026: every recorded OpenAPI operation is inventoried as native or delegated; the local Ed25519 OIDC/JWKS harness covers all seven roles and rotation/error cases; provider retries, jitter and circuit recovery are deterministic; approval integrity and concurrent supersession are guarded; notification leasing prevents duplicate delivery; and receipt lookup/revocation derives active, expired and revoked states after signature verification. Browser/portal states cover operator, administrator, reviewer, checker, auditor and verifier views. Live provider activation remains authority-blocked and is not represented as complete.
 
-## Stage 6 — scale and assurance
+## Stage 6 — scale and assurance (local baseline complete)
 
-Peak-load tests using agreed volumes, disaster recovery, penetration test, privacy impact assessment, accessibility audit, multilingual research, supply-chain controls, observability and operational runbooks.
+The executable local baseline now includes hardened digest-pinned containers, secure defaults, identifier-safe metrics and security events, a seven-route k6 regression workload, PostgreSQL backup/restore and least-privilege checks, dependency audit, CycloneDX SBOM, recursive licence inventory, secret scanning, automated multi-role axe checks and deployment/recovery/observability runbooks.
+
+The baseline does not invent national scale or certification. Production SLO/load volumes, RTO/RPO, hosting controls, languages, formal penetration test, privacy impact assessment and assisted accessibility/user research require the accountable inputs recorded in the blocker register.
 
 ## Stage 7 — controlled rollout
 

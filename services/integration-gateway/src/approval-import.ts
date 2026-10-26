@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type {
   ApprovalImportManifest,
+  ApprovalIntegrityPort,
   ApprovalImportPort,
   ApprovalImportResult,
   Principal,
@@ -31,8 +32,51 @@ export function manifestDigest(payload: Readonly<Record<string, unknown>>): stri
   return createHash('sha256').update(canonical(payload)).digest('hex');
 }
 
+function signaturePayload(manifest: ApprovalImportManifest): string {
+  const { integrity: _integrity, ...unsigned } = manifest;
+  return canonical(unsigned);
+}
+
+export class SyntheticManifestIntegrityAdapter implements ApprovalIntegrityPort {
+  public constructor(environment: 'development' | 'test' | 'production') {
+    if (environment === 'production') {
+      throw new GatewayProblem(
+        'UNSAFE_PRODUCTION_CONFIGURATION',
+        500,
+        'Synthetic manifest integrity cannot run in production.',
+      );
+    }
+  }
+
+  public sign(
+    manifest: Omit<ApprovalImportManifest, 'integrity'>,
+  ): ApprovalImportManifest['integrity'] {
+    return {
+      algorithm: 'SYNTHETIC-SHA256-NOT-FOR-PRODUCTION',
+      keyId: 'SYNTH-MANIFEST-KEY-001',
+      signature: createHash('sha256')
+        .update(`SYNTHETIC:${canonical(manifest)}`)
+        .digest('hex'),
+    };
+  }
+
+  public verify(manifest: ApprovalImportManifest): Promise<boolean> {
+    const expected = createHash('sha256')
+      .update(`SYNTHETIC:${signaturePayload(manifest)}`)
+      .digest('hex');
+    return Promise.resolve(
+      manifest.integrity.algorithm === 'SYNTHETIC-SHA256-NOT-FOR-PRODUCTION' &&
+        manifest.integrity.keyId === 'SYNTH-MANIFEST-KEY-001' &&
+        manifest.integrity.signature === expected,
+    );
+  }
+}
+
 export class ApprovalImportService implements ApprovalImportPort {
-  public constructor(private readonly repository: ApprovalManifestRepository) {}
+  public constructor(
+    private readonly repository: ApprovalManifestRepository,
+    private readonly integrity: ApprovalIntegrityPort,
+  ) {}
 
   public async import(
     manifest: ApprovalImportManifest,
@@ -40,6 +84,13 @@ export class ApprovalImportService implements ApprovalImportPort {
   ): Promise<ApprovalImportResult> {
     if (!/^SYNTH-[A-Z0-9-]+$/.test(manifest.importReference)) {
       throw new GatewayProblem('IMPORT_REFERENCE_INVALID', 422, 'The import reference is invalid.');
+    }
+    if (!(await this.integrity.verify(manifest))) {
+      throw new GatewayProblem(
+        'IMPORT_INTEGRITY_INVALID',
+        422,
+        'The approval manifest integrity proof is invalid.',
+      );
     }
     if (manifest.effectiveTo !== null && manifest.effectiveTo < manifest.effectiveFrom) {
       throw new GatewayProblem(
@@ -81,8 +132,28 @@ export class ApprovalImportService implements ApprovalImportPort {
       replayed: false,
       status: manifest.authority === 'PROPOSED' ? 'PROPOSED' : 'IMPORTED',
     };
-    await this.repository.saveApproval(manifest, result, principal);
-    return result;
+    try {
+      await this.repository.saveApproval(manifest, result, principal);
+      return result;
+    } catch (error) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === '23505'
+      ) {
+        const concurrent = await this.repository.findApproval(manifest.importReference);
+        if (concurrent?.digest === manifest.digestSha256) {
+          return { ...concurrent.result, replayed: true };
+        }
+        throw new GatewayProblem(
+          'IDEMPOTENCY_CONFLICT',
+          409,
+          'The import reference was reused for different content.',
+        );
+      }
+      throw error;
+    }
   }
 }
 

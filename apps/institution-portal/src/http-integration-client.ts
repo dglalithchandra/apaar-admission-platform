@@ -56,6 +56,28 @@ export class HttpIntegrationClient implements IntegrationClient {
     return this.requestProviderOutage();
   }
 
+  public simulateNotification(
+    state: 'PENDING' | 'DEAD_LETTER',
+  ): Promise<{ readonly state: 'PENDING' | 'DEAD_LETTER' }> {
+    return Promise.reject(
+      new IntegrationClientError(
+        state,
+        'Notification-state simulation is available only in the explicit demo adapter.',
+      ),
+    );
+  }
+
+  public simulateReceiptStatus(
+    status: 'EXPIRED' | 'REVOKED',
+  ): Promise<IntegrationVerificationReceipt> {
+    return Promise.reject(
+      new IntegrationClientError(
+        status,
+        'Receipt-state simulation is available only in the explicit demo adapter.',
+      ),
+    );
+  }
+
   private async request<T>(path: string, init: RequestInit, authenticated = true): Promise<T> {
     const token = authenticated ? await this.options.token() : null;
     const headers = new Headers(init.headers);

@@ -40,5 +40,26 @@ describe('IntegrationWorkspace', () => {
     const receipt = await screen.findByRole('region', { name: 'SYNTH-VERIFICATION-PORTAL-001' });
     expect(receipt).toHaveTextContent('ADMISSION_EXISTS, CURRENT_STATUS');
     expect(receipt).toHaveTextContent('SYNTHETIC-SHA256-NOT-FOR-PRODUCTION');
+    expect(receipt).toHaveTextContent('ACTIVE');
+  });
+
+  it.each([
+    ['Preview notification pending', 'pending'],
+    ['Preview notification failure', 'dead letter'],
+  ])('shows the %s state without changing a decision', async (button, message) => {
+    render(<IntegrationWorkspace client={new DemoIntegrationClient()} />);
+    await userEvent.click(screen.getByRole('button', { name: button }));
+    expect(await screen.findByRole('status')).toHaveTextContent(message);
+  });
+
+  it.each([
+    ['Preview expired receipt', 'EXPIRED'],
+    ['Preview revoked receipt', 'REVOKED'],
+  ])('shows the %s status as non-current', async (button, status) => {
+    render(<IntegrationWorkspace client={new DemoIntegrationClient()} />);
+    await userEvent.click(screen.getByRole('button', { name: button }));
+    expect(
+      await screen.findByRole('region', { name: 'SYNTH-VERIFICATION-PORTAL-001' }),
+    ).toHaveTextContent(status);
   });
 });

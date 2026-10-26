@@ -21,13 +21,21 @@ export interface AuthenticationPort {
 }
 
 export type GatewayAction =
+  | 'ADMISSION_WRITE'
+  | 'BATCH_WRITE'
+  | 'RECORD_READ'
   | 'CASE_CREATE'
+  | 'CASE_READ'
+  | 'CASE_INSTITUTION_ACT'
   | 'CASE_RECOMMEND'
   | 'CASE_DECIDE'
+  | 'METADATA_READ'
   | 'IDENTITY_VERIFY'
   | 'APPROVAL_IMPORT'
   | 'NOTIFICATION_PROCESS'
   | 'VERIFICATION_CREATE'
+  | 'VERIFICATION_READ'
+  | 'VERIFICATION_REVOKE'
   | 'AUDIT_READ';
 
 export class GatewayProblem extends Error {
@@ -43,6 +51,25 @@ export class GatewayProblem extends Error {
 
 export interface GatewayClock {
   now(): string;
+}
+
+export interface GatewayTelemetryPort {
+  record(input: {
+    readonly durationMilliseconds: number;
+    readonly method: string;
+    readonly route: string;
+    readonly status: number;
+  }): void;
+  prometheus(): string;
+}
+
+export interface SecurityEventPort {
+  record(input: {
+    readonly actorReference: string;
+    readonly correlationReference: string;
+    readonly details: Readonly<Record<string, unknown>>;
+    readonly eventCode: string;
+  }): Promise<void>;
 }
 
 export type AcademicIdentityStatus =
@@ -78,12 +105,21 @@ export interface ApprovalImportManifest {
   readonly effectiveFrom: string;
   readonly effectiveTo: string | null;
   readonly importReference: string;
+  readonly integrity: {
+    readonly algorithm: string;
+    readonly keyId: string;
+    readonly signature: string;
+  };
   readonly institutionId: string;
   readonly payload: Readonly<Record<string, unknown>>;
   readonly programmeId: string;
   readonly sourceSystem: string;
   readonly sourceVersion: string;
   readonly supersedesImportReference: string | null;
+}
+
+export interface ApprovalIntegrityPort {
+  verify(manifest: ApprovalImportManifest): Promise<boolean>;
 }
 
 export interface ApprovalImportResult {
@@ -101,7 +137,7 @@ export interface NotificationDelivery {
   readonly destinationReference: string;
   readonly messageCode: string;
   readonly notificationId: string;
-  readonly state: 'PENDING' | 'DELIVERED' | 'RETRYABLE' | 'DEAD_LETTER';
+  readonly state: 'PENDING' | 'IN_FLIGHT' | 'DELIVERED' | 'RETRYABLE' | 'DEAD_LETTER';
 }
 
 export interface NotificationGatewayPort {
@@ -113,6 +149,7 @@ export interface NotificationRepositoryPort {
   complete(
     notificationId: string,
     outcome: 'DELIVERED' | 'RETRYABLE' | 'DEAD_LETTER',
+    availableAt: string | null,
   ): Promise<void>;
 }
 
@@ -137,7 +174,7 @@ export interface VerificationReceipt {
   readonly purpose: string;
   readonly requesterOrganisation: string;
   readonly signature: string;
-  readonly status: 'ACTIVE' | 'REVOKED';
+  readonly status: 'ACTIVE' | 'EXPIRED' | 'REVOKED';
   readonly verificationReference: string;
 }
 
@@ -149,6 +186,10 @@ export interface SigningPort {
   sign(
     payload: string,
   ): Promise<{ readonly algorithm: string; readonly keyId: string; readonly signature: string }>;
+  verify(
+    payload: string,
+    signed: { readonly algorithm: string; readonly keyId: string; readonly signature: string },
+  ): Promise<boolean>;
 }
 
 export interface VerificationReceiptPort {
@@ -156,12 +197,26 @@ export interface VerificationReceiptPort {
     idempotencyKey: string,
   ): Promise<{ readonly hash: string; readonly receipt: VerificationReceipt } | null>;
   save(idempotencyKey: string, hash: string, receipt: VerificationReceipt): Promise<void>;
+  findByReference(verificationReference: string): Promise<VerificationReceipt | null>;
+  revoke(verificationReference: string, reason: string, actor: string, at: string): Promise<void>;
 }
 
 export interface ExistingServiceTransportPort {
   execute(
-    operation: 'CASE_CREATE' | 'CASE_RECOMMEND' | 'CASE_DECIDE',
+    operation: string,
     input: Readonly<Record<string, unknown>>,
     principal: Principal,
-  ): Promise<unknown>;
+  ): Promise<GatewayTransportResponse>;
+}
+
+export interface GatewayTransportResponse {
+  readonly body: unknown;
+  readonly contentType?: 'application/json' | 'text/csv';
+  readonly headers?: Readonly<Record<string, string>>;
+  readonly status: number;
+}
+
+export interface ContractValidationPort {
+  validateRequest(operationId: string, input: Readonly<Record<string, unknown>>): void;
+  validateResponse(operationId: string, response: GatewayTransportResponse): void;
 }

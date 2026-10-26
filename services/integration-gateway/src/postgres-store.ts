@@ -8,6 +8,7 @@ import type {
   Principal,
   VerificationReceipt,
   VerificationReceiptPort,
+  SecurityEventPort,
 } from './model.js';
 import { GatewayProblem } from './model.js';
 
@@ -27,7 +28,11 @@ async function transaction<T>(pool: Pool, work: (client: PoolClient) => Promise<
 }
 
 export class PostgresIntegrationStore
-  implements ApprovalManifestRepository, NotificationRepositoryPort, VerificationReceiptPort
+  implements
+    ApprovalManifestRepository,
+    NotificationRepositoryPort,
+    VerificationReceiptPort,
+    SecurityEventPort
 {
   public constructor(private readonly pool: Pool) {}
 
@@ -88,6 +93,43 @@ export class PostgresIntegrationStore
         };
   }
 
+  public async findByReference(reference: string): Promise<VerificationReceipt | null> {
+    const receipt = await this.pool.query<{
+      algorithm: string;
+      claims: Record<string, string | boolean>;
+      expires_at: string;
+      issued_at: string;
+      key_id: string;
+      legal_basis_reference: string;
+      purpose: string;
+      requester_organisation: string;
+      signature: string;
+      verification_reference: string;
+      revoked: boolean;
+    }>(
+      `SELECT r.*,EXISTS(SELECT 1 FROM verification_receipt_revocations x
+       WHERE x.verification_reference=r.verification_reference) AS revoked
+       FROM verification_receipts r WHERE r.verification_reference=$1`,
+      [reference],
+    );
+    const row = receipt.rows[0];
+    return row === undefined
+      ? null
+      : {
+          algorithm: row.algorithm,
+          claims: row.claims,
+          expiresAt: new Date(row.expires_at).toISOString(),
+          issuedAt: new Date(row.issued_at).toISOString(),
+          keyId: row.key_id,
+          legalBasisReference: row.legal_basis_reference,
+          purpose: row.purpose,
+          requesterOrganisation: row.requester_organisation,
+          signature: row.signature,
+          status: row.revoked ? 'REVOKED' : 'ACTIVE',
+          verificationReference: row.verification_reference,
+        };
+  }
+
   public async save(
     idempotencyKey: string,
     requestHash: string,
@@ -129,6 +171,11 @@ export class PostgresIntegrationStore
     principal: Principal,
   ): Promise<void> {
     await transaction(this.pool, async (client) => {
+      await client.query(`SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, [
+        [manifest.institutionId, manifest.campusId, manifest.programmeId, manifest.courseId].join(
+          '|',
+        ),
+      ]);
       const overlap = await client.query<{ id: string }>(
         `SELECT id FROM integration_approval_imports
          WHERE institution_id=$1 AND campus_id=$2 AND programme_id=$3 AND course_id=$4
@@ -222,7 +269,8 @@ export class PostgresIntegrationStore
       }>(
         `SELECT id,destination_reference,message_code,state,attempt_count
          FROM integration_notification_deliveries
-         WHERE state IN ('PENDING','RETRYABLE') AND available_at <= $1
+         WHERE (state IN ('PENDING','RETRYABLE') AND available_at <= $1)
+            OR (state='IN_FLIGHT' AND lease_until <= $1)
          ORDER BY created_at,id FOR UPDATE SKIP LOCKED LIMIT 1`,
         [now],
       );
@@ -230,8 +278,10 @@ export class PostgresIntegrationStore
       if (row === undefined) return null;
       const attempt = row.attempt_count + 1;
       await client.query(
-        'UPDATE integration_notification_deliveries SET attempt_count=$2 WHERE id=$1',
-        [row.id, attempt],
+        `UPDATE integration_notification_deliveries
+         SET attempt_count=$2,state='IN_FLIGHT',lease_until=$3::timestamptz+interval '30 seconds'
+         WHERE id=$1`,
+        [row.id, attempt, now],
       );
       await client.query(
         `INSERT INTO integration_notification_attempts(notification_id,attempt_number,outcome)
@@ -243,7 +293,7 @@ export class PostgresIntegrationStore
         destinationReference: row.destination_reference,
         messageCode: row.message_code,
         notificationId: row.id,
-        state: row.state,
+        state: 'IN_FLIGHT',
       };
     });
   }
@@ -251,6 +301,7 @@ export class PostgresIntegrationStore
   public async complete(
     notificationId: string,
     outcome: 'DELIVERED' | 'RETRYABLE' | 'DEAD_LETTER',
+    availableAt: string | null,
   ): Promise<void> {
     await transaction(this.pool, async (client) => {
       const current = await client.query<{ attempt_count: number }>(
@@ -263,9 +314,10 @@ export class PostgresIntegrationStore
       await client.query(
         `UPDATE integration_notification_deliveries SET state=$2,
          delivered_at=CASE WHEN $2='DELIVERED' THEN transaction_timestamp() ELSE delivered_at END,
-         available_at=CASE WHEN $2='RETRYABLE' THEN transaction_timestamp()+interval '30 seconds' ELSE available_at END
+         available_at=CASE WHEN $2='RETRYABLE' THEN $3::timestamptz ELSE available_at END,
+         lease_until=NULL
          WHERE id=$1`,
-        [notificationId, outcome],
+        [notificationId, outcome, availableAt],
       );
       await client.query(
         `INSERT INTO integration_notification_attempts(notification_id,attempt_number,outcome)
@@ -280,6 +332,20 @@ export class PostgresIntegrationStore
       `INSERT INTO verification_receipt_revocations(verification_reference,reason_code,actor_reference,revoked_at)
        VALUES($1,$2,$3,$4) ON CONFLICT(verification_reference) DO NOTHING`,
       [reference, reason, actor, at],
+    );
+  }
+
+  public async record(input: {
+    readonly actorReference: string;
+    readonly correlationReference: string;
+    readonly details: Readonly<Record<string, unknown>>;
+    readonly eventCode: string;
+  }): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO integration_security_events(
+        event_code,actor_reference,correlation_reference,details
+       ) VALUES($1,$2,$3,$4)`,
+      [input.eventCode, input.actorReference, input.correlationReference, input.details],
     );
   }
 

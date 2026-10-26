@@ -9,6 +9,8 @@ export class NotificationWorker {
     private readonly repository: NotificationRepositoryPort,
     private readonly gateway: NotificationGatewayPort,
     private readonly maximumAttempts = 3,
+    private readonly retryDelayMs: (attempt: number) => number = (attempt) =>
+      30_000 * 2 ** Math.max(0, attempt - 1),
   ) {}
 
   public async processOne(now: string): Promise<NotificationDelivery | null> {
@@ -21,7 +23,11 @@ export class NotificationWorker {
         : result === 'RETRYABLE' && delivery.attemptCount < this.maximumAttempts
           ? 'RETRYABLE'
           : 'DEAD_LETTER';
-    await this.repository.complete(delivery.notificationId, outcome);
+    const availableAt =
+      outcome === 'RETRYABLE'
+        ? new Date(Date.parse(now) + this.retryDelayMs(delivery.attemptCount)).toISOString()
+        : null;
+    await this.repository.complete(delivery.notificationId, outcome, availableAt);
     return { ...delivery, state: outcome };
   }
 }
@@ -55,6 +61,7 @@ export class InMemoryNotificationRepository implements NotificationRepositoryPor
   public complete(
     notificationId: string,
     outcome: 'DELIVERED' | 'RETRYABLE' | 'DEAD_LETTER',
+    _availableAt: string | null,
   ): Promise<void> {
     const current = this.queue.find((item) => item.notificationId === notificationId);
     if (current !== undefined) this.replace({ ...current, state: outcome });

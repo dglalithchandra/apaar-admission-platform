@@ -1,0 +1,61 @@
+name: apaar-platform-local
+services:
+  postgres:
+    image: postgres:17.6-alpine@sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94
+    environment:
+      POSTGRES_DB: apaar
+      POSTGRES_PASSWORD: SYNTH-LOCAL-POSTGRES-ONLY
+      POSTGRES_USER: apaar_local_admin
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U apaar_local_admin -d apaar']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    ports:
+      - '127.0.0.1:54329:5432'
+    read_only: true
+    tmpfs:
+      - /run/postgresql
+      - /tmp
+    volumes:
+      - apaar-postgres-data:/var/lib/postgresql/data
+    security_opt:
+      - no-new-privileges:true
+  gateway:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    environment:
+      ALLOWED_ORIGINS: http://127.0.0.1:5173
+      APAAR_MODE: simulator
+      GATEWAY_HOST: 0.0.0.0
+      GATEWAY_PORT: '8080'
+      NODE_ENV: development
+      SYNTHETIC_AUTH_ENABLED: 'true'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:8080/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    ports:
+      - '127.0.0.1:8080:8080'
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    stop_grace_period: 15s
+    depends_on:
+      postgres:
+        condition: service_healthy
+volumes:
+  apaar-postgres-data:

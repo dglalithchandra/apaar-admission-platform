@@ -4,30 +4,45 @@ import type {
   ApprovalImportManifest,
   ApprovalImportPort,
   AuthenticationPort,
+  ContractValidationPort,
   ExistingServiceTransportPort,
   GatewayClock,
+  GatewayTelemetryPort,
   Principal,
+  SecurityEventPort,
 } from './model.js';
 import { GatewayProblem } from './model.js';
 import { authorize } from './auth.js';
 import type { NotificationWorker } from './notifications.js';
-import type { CreateVerificationInput, VerificationService } from './verification.js';
+import type {
+  CreateVerificationInput,
+  VerificationService,
+  VerificationStatusService,
+} from './verification.js';
+import { authorizeDelegatedRoute, matchDelegatedRoute, requireIdempotencyKey } from './routes.js';
+import { sanitizeMetricRoute } from './observability.js';
 
 export interface GatewayHttpDependencies {
   readonly approvalImporter: ApprovalImportPort;
   readonly authenticator: AuthenticationPort;
   readonly clock: GatewayClock;
+  readonly contractValidator: ContractValidationPort;
   readonly dependencies: () => Readonly<Record<string, 'UP' | 'DEGRADED' | 'DISABLED'>>;
   readonly existingServices: ExistingServiceTransportPort;
   readonly identityVerifier: AcademicIdentityPort;
   readonly nextCorrelationReference: () => string;
   readonly notificationWorker: NotificationWorker;
   readonly verificationService: VerificationService;
+  readonly verificationStatusService: VerificationStatusService;
+  readonly telemetry: GatewayTelemetryPort;
+  readonly securityEvents: SecurityEventPort;
 }
 
 export interface GatewayHttpOptions {
+  readonly allowedOrigins: readonly string[];
   readonly host: string;
   readonly maximumJsonBytes: number;
+  readonly maximumUploadBytes: number;
   readonly port: number;
   readonly requestTimeoutMs: number;
   readonly requestsPerMinute: number;
@@ -47,12 +62,27 @@ function send(
   status: number,
   body: unknown,
   correlationReference: string,
+  options: {
+    readonly contentType?: string | undefined;
+    readonly headers?: Readonly<Record<string, string>> | undefined;
+    readonly origin?: string | undefined;
+  } = {},
 ): void {
-  const content = JSON.stringify(body);
+  const content = typeof body === 'string' ? body : JSON.stringify(body);
   res.writeHead(status, {
+    'cache-control': 'no-store',
     'content-length': Buffer.byteLength(content),
-    'content-type': status >= 400 ? 'application/problem+json' : 'application/json',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    'content-type':
+      options.contentType ?? (status >= 400 ? 'application/problem+json' : 'application/json'),
+    'cross-origin-resource-policy': 'same-site',
+    'referrer-policy': 'no-referrer',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains',
     'x-correlation-id': correlationReference,
+    'x-content-type-options': 'nosniff',
+    'x-frame-options': 'DENY',
+    ...(options.origin === undefined ? {} : { 'access-control-allow-origin': options.origin }),
+    ...options.headers,
   });
   res.end(content);
 }
@@ -81,6 +111,62 @@ async function readJson(
   } catch {
     throw new GatewayProblem('REQUEST_JSON_INVALID', 422, 'The JSON request body is invalid.');
   }
+}
+
+async function readMultipart(
+  req: IncomingMessage,
+  maximumBytes: number,
+): Promise<Record<string, unknown>> {
+  const contentType = req.headers['content-type'] ?? '';
+  const boundaryMatch = /multipart\/form-data;\s*boundary=(?:"([^"]+)"|([^;\s]+))/i.exec(
+    contentType,
+  );
+  const boundary = boundaryMatch?.[1] ?? boundaryMatch?.[2];
+  if (boundary === undefined) {
+    throw new GatewayProblem(
+      'CONTENT_TYPE_UNSUPPORTED',
+      415,
+      'Use multipart/form-data with a boundary.',
+    );
+  }
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of req) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array);
+    size += buffer.length;
+    if (size > maximumBytes) {
+      throw new GatewayProblem('UPLOAD_TOO_LARGE', 413, 'The upload is too large.');
+    }
+    chunks.push(buffer);
+  }
+  const fields: Record<string, unknown> = {};
+  for (const rawPart of Buffer.concat(chunks).toString('utf8').split(`--${boundary}`)) {
+    const part = rawPart.replace(/^\r\n|\r\n$/g, '');
+    if (part === '' || part === '--') continue;
+    const separator = part.indexOf('\r\n\r\n');
+    if (separator < 0) {
+      throw new GatewayProblem('MULTIPART_INVALID', 422, 'The multipart upload is malformed.');
+    }
+    const headers = part.slice(0, separator);
+    const name = /content-disposition:[^\r\n]*\bname="([^"]+)"/i.exec(headers)?.[1];
+    if (name === undefined || fields[name] !== undefined) {
+      throw new GatewayProblem('MULTIPART_INVALID', 422, 'The multipart upload is malformed.');
+    }
+    const value = part.slice(separator + 4).replace(/\r\n$/, '');
+    fields[name] = /\bfilename="[^"]*"/i.test(headers) ? Buffer.from(value, 'utf8') : value;
+  }
+  for (const required of [
+    'file',
+    'templateVersion',
+    'actorReference',
+    'reason',
+    'requestReference',
+  ]) {
+    if (fields[required] === undefined) {
+      throw new GatewayProblem('REQUEST_VALIDATION_FAILED', 422, `${required} is required.`);
+    }
+  }
+  return fields;
 }
 
 function requiredString(body: Readonly<Record<string, unknown>>, key: string): string {
@@ -127,14 +213,41 @@ export class GatewayHttpApplication {
   }
 
   private async handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const started = performance.now();
+    const observedPath = new URL(req.url ?? '/', 'http://localhost').pathname;
+    res.once('finish', () => {
+      this.dependencies.telemetry.record({
+        durationMilliseconds: performance.now() - started,
+        method: req.method ?? 'UNKNOWN',
+        route: observedPath,
+        status: res.statusCode,
+      });
+    });
     const correlationReference =
       (Array.isArray(req.headers['x-correlation-id'])
         ? req.headers['x-correlation-id'][0]
         : req.headers['x-correlation-id']) ?? this.dependencies.nextCorrelationReference();
+    let actorReference = 'SYNTH-UNAUTHENTICATED';
     try {
       const url = new URL(req.url ?? '/', 'http://localhost');
+      const origin = this.allowedOrigin(req.headers.origin);
+      if (req.headers.origin !== undefined && origin === undefined) {
+        throw new GatewayProblem('ORIGIN_FORBIDDEN', 403, 'The request origin is not allowed.');
+      }
+      if (req.method === 'OPTIONS') {
+        send(res, 204, '', correlationReference, {
+          headers: {
+            'access-control-allow-headers':
+              'authorization,content-type,idempotency-key,x-correlation-id',
+            'access-control-allow-methods': 'GET,POST,PATCH,OPTIONS',
+            'access-control-max-age': '600',
+          },
+          origin,
+        });
+        return;
+      }
       if (req.method === 'GET' && url.pathname === '/health') {
-        send(res, 200, { status: 'UP' }, correlationReference);
+        send(res, 200, { status: 'UP' }, correlationReference, { origin });
         return;
       }
       if (req.method === 'GET' && url.pathname === '/ready') {
@@ -145,14 +258,26 @@ export class GatewayHttpApplication {
           ready ? 200 : 503,
           { dependencies: states, status: ready ? 'UP' : 'DEGRADED' },
           correlationReference,
+          { origin },
         );
         return;
       }
       const principal = await this.authenticate(req);
+      actorReference = principal.actorReference;
       this.limit(principal);
       if (req.method === 'GET' && url.pathname === '/v1/dependencies') {
         authorize(principal, 'AUDIT_READ');
-        send(res, 200, { dependencies: this.dependencies.dependencies() }, correlationReference);
+        send(res, 200, { dependencies: this.dependencies.dependencies() }, correlationReference, {
+          origin,
+        });
+        return;
+      }
+      if (req.method === 'GET' && url.pathname === '/metrics') {
+        authorize(principal, 'AUDIT_READ');
+        send(res, 200, this.dependencies.telemetry.prometheus(), correlationReference, {
+          contentType: 'text/plain; version=0.0.4; charset=utf-8',
+          origin,
+        });
         return;
       }
       if (req.method === 'POST' && url.pathname === '/v1/academic-identity/verifications') {
@@ -171,7 +296,7 @@ export class GatewayHttpApplication {
           correlationReference,
           purpose: purpose as 'ADMISSION_LINKING' | 'CORRECTION_REVIEW',
         });
-        send(res, 200, result, correlationReference);
+        send(res, 200, result, correlationReference, { origin });
         return;
       }
       if (req.method === 'POST' && url.pathname === '/v1/integration/approval-imports') {
@@ -185,26 +310,50 @@ export class GatewayHttpApplication {
           201,
           await this.dependencies.approvalImporter.import(manifest, principal),
           correlationReference,
+          { origin },
         );
         return;
       }
       if (req.method === 'POST' && url.pathname === '/v1/verifications') {
         authorize(principal, 'VERIFICATION_CREATE');
         const body = await readJson(req, this.options.maximumJsonBytes);
-        const idempotencyHeader = req.headers['idempotency-key'];
-        const idempotencyKey = Array.isArray(idempotencyHeader)
-          ? idempotencyHeader[0]
-          : idempotencyHeader;
-        if (idempotencyKey === undefined || idempotencyKey.trim() === '') {
-          throw new GatewayProblem('IDEMPOTENCY_KEY_REQUIRED', 422, 'Idempotency-Key is required.');
-        }
+        const idempotencyKey = requireIdempotencyKey(req.headers['idempotency-key']);
         const input = { ...body, idempotencyKey } as unknown as CreateVerificationInput;
         send(
           res,
           200,
           await this.dependencies.verificationService.create(input, principal),
           correlationReference,
+          { origin },
         );
+        return;
+      }
+      const verificationStatus = /^\/v1\/verifications\/([^/]+)$/.exec(url.pathname);
+      if (req.method === 'GET' && verificationStatus?.[1] !== undefined) {
+        authorize(principal, 'VERIFICATION_READ');
+        send(
+          res,
+          200,
+          await this.dependencies.verificationStatusService.get(
+            decodeURIComponent(verificationStatus[1]),
+          ),
+          correlationReference,
+          { origin },
+        );
+        return;
+      }
+      const verificationRevocation = /^\/v1\/verifications\/([^/]+)\/revocations$/.exec(
+        url.pathname,
+      );
+      if (req.method === 'POST' && verificationRevocation?.[1] !== undefined) {
+        authorize(principal, 'VERIFICATION_REVOKE');
+        const body = await readJson(req, this.options.maximumJsonBytes);
+        await this.dependencies.verificationStatusService.revoke(
+          decodeURIComponent(verificationRevocation[1]),
+          requiredString(body, 'reason'),
+          principal,
+        );
+        send(res, 204, '', correlationReference, { origin });
         return;
       }
       if (req.method === 'POST' && url.pathname === '/v1/notifications/process') {
@@ -218,43 +367,47 @@ export class GatewayHttpApplication {
             ),
           },
           correlationReference,
+          { origin },
         );
         return;
       }
-      const institutionCase = /^\/v1\/institutions\/([^/]+)\/cases$/.exec(url.pathname);
-      if (req.method === 'POST' && institutionCase?.[1] !== undefined) {
-        authorize(principal, 'CASE_CREATE', decodeURIComponent(institutionCase[1]));
-        const body = await readJson(req, this.options.maximumJsonBytes);
-        send(
-          res,
-          201,
-          await this.dependencies.existingServices.execute('CASE_CREATE', body, principal),
-          correlationReference,
+      const delegated = matchDelegatedRoute(req.method, url.pathname);
+      if (delegated !== null) {
+        authorizeDelegatedRoute(principal, delegated);
+        const body =
+          delegated.route.body === 'JSON'
+            ? await readJson(req, this.options.maximumJsonBytes)
+            : delegated.route.body === 'MULTIPART'
+              ? await readMultipart(req, this.options.maximumUploadBytes)
+              : {};
+        const idempotencyKey = delegated.route.idempotent
+          ? requireIdempotencyKey(req.headers['idempotency-key'])
+          : null;
+        const input = {
+          ...body,
+          ...(idempotencyKey === null ? {} : { idempotencyKey }),
+          path: delegated.path,
+          query: Object.fromEntries(url.searchParams),
+        };
+        this.dependencies.contractValidator.validateRequest(delegated.route.operationId, input);
+        const response = await this.dependencies.existingServices.execute(
+          delegated.route.operationId,
+          input,
+          principal,
         );
-        return;
-      }
-      const caseRecommendation = /^\/v1\/cases\/([^/]+)\/recommendations$/.exec(url.pathname);
-      if (req.method === 'POST' && caseRecommendation !== null) {
-        authorize(principal, 'CASE_RECOMMEND');
-        const body = await readJson(req, this.options.maximumJsonBytes);
-        send(
-          res,
-          200,
-          await this.dependencies.existingServices.execute('CASE_RECOMMEND', body, principal),
-          correlationReference,
-        );
-        return;
-      }
-      const caseDecision = /^\/v1\/cases\/([^/]+)\/decisions$/.exec(url.pathname);
-      if (req.method === 'POST' && caseDecision !== null) {
-        authorize(principal, 'CASE_DECIDE');
-        const body = await readJson(req, this.options.maximumJsonBytes);
-        send(
-          res,
-          200,
-          await this.dependencies.existingServices.execute('CASE_DECIDE', body, principal),
-          correlationReference,
-        );
+        this.dependencies.contractValidator.validateResponse(delegated.route.operationId, response);
+        if (response.status !== delegated.route.status) {
+          throw new GatewayProblem(
+            'RESPONSE_CONTRACT_VIOLATION',
+            502,
+            'A downstream service returned an undocumented success status.',
+          );
+        }
+        send(res, response.status, response.body, correlationReference, {
+          contentType: response.contentType,
+          headers: response.headers,
+          origin,
+        });
         return;
       }
       throw new GatewayProblem('ROUTE_NOT_FOUND', 404, 'The route was not found.');
@@ -271,6 +424,26 @@ export class GatewayHttpApplication {
         traceId: correlationReference,
         type: `urn:apaar-platform:problem:${problem.code.toLowerCase().replaceAll('_', '-')}`,
       };
+      if (
+        [
+          'ACTION_FORBIDDEN',
+          'ORIGIN_FORBIDDEN',
+          'RATE_LIMIT_EXCEEDED',
+          'TENANT_SCOPE_DENIED',
+          'UNAUTHENTICATED',
+        ].includes(problem.code)
+      ) {
+        await this.dependencies.securityEvents.record({
+          actorReference,
+          correlationReference,
+          details: {
+            method: req.method ?? 'UNKNOWN',
+            route: sanitizeMetricRoute(observedPath),
+            status: problem.status,
+          },
+          eventCode: problem.code,
+        });
+      }
       send(res, problem.status, body, correlationReference);
     }
   }
@@ -292,5 +465,10 @@ export class GatewayHttpApplication {
     if (next.count > this.options.requestsPerMinute) {
       throw new GatewayProblem('RATE_LIMIT_EXCEEDED', 429, 'The request rate limit was exceeded.');
     }
+  }
+
+  private allowedOrigin(origin: string | undefined): string | undefined {
+    if (origin === undefined) return undefined;
+    return this.options.allowedOrigins.includes(origin) ? origin : undefined;
   }
 }

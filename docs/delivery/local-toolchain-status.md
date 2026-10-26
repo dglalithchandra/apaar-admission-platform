@@ -34,4 +34,10 @@ Stage 5 in-app browser acceptance passed at 390 × 844, 768 × 1024 and 1440 × 
 
 The final Stage 5 local-foundation regression passed `npm run check`, all four PostgreSQL commands, the production portal build, contract validation, `npm audit` with zero vulnerabilities and `git diff --check`. Live AICTE, APAAR/API Setu, OIDC tenant, notification and signing connections were not tested because no approved contracts or credentials are available; their modes remain disabled and are not completion evidence.
 
+The Stage 6 assurance tooling is also executable locally. The hardened gateway image built from digest-pinned Node 24.19.0, became healthy as user `node`, and was inspected with a read-only root filesystem and all Linux capabilities dropped. The digest-pinned PostgreSQL recovery drill passed its logical backup/restore and non-superuser/non-login role checks in 4.447 seconds. The final declared k6 1.3.0 run completed 280/280 checks with zero failed HTTP requests; local p95 was 2.11 ms and p99 was 9.73 ms. These are loopback regression figures, not national capacity claims. Docker Scout 1.27.0 is installed for advisory image scanning.
+
+The portal now has 41 passing component tests, including six axe-core scans across institution, reviewer, checker, auditor and verifier views. Formal accessibility certification, assistive-technology/user research and legally approved translations remain external validation activities.
+
+The completed Stage 5/6 local regression totals are 234 passing unit/component tests and 52 passing real-PostgreSQL integration tests. Gateway coverage is 94.16% statements, 88.48% branches, 97.32% functions and 94.81% lines; admission-domain and casework coverage remain 100%. Docker Scout found no vulnerability in the final 64 MB, 52-package runtime image after build-only npm removal and fixed Alpine crypto/compression package installation.
+
 Docker Desktop was installed for all users with the WSL 2 backend. WSL was repaired in place from 2.6.3.0 to 2.7.14.0 using Microsoft's signed package after the older runtime failed Docker's startup precondition.

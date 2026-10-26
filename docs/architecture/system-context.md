@@ -34,3 +34,7 @@ One institution uploads a versioned CSV against a synthetic approval snapshot. T
 ## Stage 5 integration boundary
 
 One authenticated gateway terminates versioned HTTP requests and converts trusted OIDC claims into the product principal. It delegates admission and casework decisions to the existing services. APAAR, approval feeds, notification gateways and signing are replaceable adapters; they are disabled or synthetic until their official contracts and credentials are approved. Health/readiness expose dependency classes only. Verification returns a minimal expiring receipt for an explicit purpose and legal basis.
+
+## Stage 6 assurance boundary
+
+Container, load, recovery, accessibility and security-supply-chain harnesses exercise this architecture locally without adding another source of regulatory truth. Metrics and security events observe decisions but cannot make them. The compose stack is a disposable synthetic environment; production hosting, secrets, cryptographic authority, national traffic targets and recovery objectives remain outside the repository until their accountable owners provide them.

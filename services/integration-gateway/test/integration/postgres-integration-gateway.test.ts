@@ -9,6 +9,7 @@ import {
   NotificationWorker,
   PostgresIntegrationStore,
   SyntheticNotificationGateway,
+  SyntheticManifestIntegrityAdapter,
   manifestDigest,
   type ApprovalImportManifest,
   type Principal,
@@ -37,7 +38,7 @@ function approval(
   overrides: Partial<ApprovalImportManifest> = {},
 ): ApprovalImportManifest {
   const payload = overrides.payload ?? { approvedIntake: 60, academicYear: '2026-27' };
-  return {
+  const provisional: ApprovalImportManifest = {
     authority: 'SOURCE_CONFIRMED',
     campusId: 'SYNTH-CAMPUS-001',
     courseId: 'SYNTH-COURSE-001',
@@ -45,6 +46,7 @@ function approval(
     effectiveFrom: '2026-07-01',
     effectiveTo: '2027-06-30',
     importReference: reference,
+    integrity: { algorithm: 'SYNTH-PENDING', keyId: 'SYNTH-PENDING', signature: 'SYNTH-PENDING' },
     institutionId: 'SYNTH-INSTITUTION-001',
     payload,
     programmeId: 'SYNTH-PROGRAMME-001',
@@ -53,6 +55,9 @@ function approval(
     supersedesImportReference: null,
     ...overrides,
   };
+  if (overrides.integrity !== undefined) return provisional;
+  const { integrity: _integrity, ...unsigned } = provisional;
+  return { ...unsigned, integrity: new SyntheticManifestIntegrityAdapter('test').sign(unsigned) };
 }
 
 beforeAll(async () => {
@@ -67,7 +72,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await pool.query(`TRUNCATE integration_notification_attempts,integration_notification_deliveries,
+  await pool.query(`TRUNCATE integration_security_events,integration_notification_attempts,integration_notification_deliveries,
     verification_receipt_revocations,verification_receipts,integration_approval_imports,
     business_audit_events,outbox_events,courses,programmes,campuses,institutions CASCADE`);
   await pool.query(
@@ -94,6 +99,7 @@ describe('Stage 5 PostgreSQL integration foundation', () => {
       '0002_student_batch_ingestion.sql',
       '0003_admission_casework_governance.sql',
       '0004_authenticated_integrations.sql',
+      '0005_operational_assurance.sql',
     ]);
     for (const directory of migrationDirectories)
       await expect(migrate(pool, directory)).resolves.toEqual([]);
@@ -101,7 +107,7 @@ describe('Stage 5 PostgreSQL integration foundation', () => {
 
   it('imports an authoritative manifest atomically and returns an exact replay', async () => {
     const store = new PostgresIntegrationStore(pool);
-    const service = new ApprovalImportService(store);
+    const service = new ApprovalImportService(store, new SyntheticManifestIntegrityAdapter('test'));
     const input = approval('SYNTH-IMPORT-001');
     await expect(service.import(input, integrator)).resolves.toMatchObject({
       replayed: false,
@@ -117,7 +123,10 @@ describe('Stage 5 PostgreSQL integration foundation', () => {
   });
 
   it('rejects authoritative overlap and invalid institution scope without partial audit or outbox', async () => {
-    const service = new ApprovalImportService(new PostgresIntegrationStore(pool));
+    const service = new ApprovalImportService(
+      new PostgresIntegrationStore(pool),
+      new SyntheticManifestIntegrityAdapter('test'),
+    );
     await service.import(approval('SYNTH-IMPORT-OVERLAP-001'), integrator);
     await expect(
       service.import(approval('SYNTH-IMPORT-OVERLAP-002'), integrator),
@@ -137,7 +146,10 @@ describe('Stage 5 PostgreSQL integration foundation', () => {
   });
 
   it('supersedes exactly one named overlapping authoritative import', async () => {
-    const service = new ApprovalImportService(new PostgresIntegrationStore(pool));
+    const service = new ApprovalImportService(
+      new PostgresIntegrationStore(pool),
+      new SyntheticManifestIntegrityAdapter('test'),
+    );
     await service.import(approval('SYNTH-IMPORT-OLD-001'), integrator);
     await expect(
       service.import(
@@ -155,6 +167,32 @@ describe('Stage 5 PostgreSQL integration foundation', () => {
       { id: 'SYNTH-IMPORT-NEW-001', superseded_by: null },
       { id: 'SYNTH-IMPORT-OLD-001', superseded_by: 'SYNTH-IMPORT-NEW-001' },
     ]);
+  });
+
+  it('serializes concurrent exact replay and competing authoritative overlap', async () => {
+    const service = new ApprovalImportService(
+      new PostgresIntegrationStore(pool),
+      new SyntheticManifestIntegrityAdapter('test'),
+    );
+    const exact = approval('SYNTH-IMPORT-CONCURRENT-001');
+    const exactResults = await Promise.all([
+      service.import(exact, integrator),
+      service.import(exact, integrator),
+    ]);
+    expect(exactResults.filter((result) => result.replayed)).toHaveLength(1);
+    await pool.query(
+      `TRUNCATE integration_approval_imports,business_audit_events,outbox_events CASCADE`,
+    );
+    const competing = await Promise.allSettled([
+      service.import(approval('SYNTH-IMPORT-COMPETING-001'), integrator),
+      service.import(approval('SYNTH-IMPORT-COMPETING-002'), integrator),
+    ]);
+    expect(competing.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(competing.filter((result) => result.status === 'rejected')).toHaveLength(1);
+    const imports = await pool.query<{ count: string }>(
+      'SELECT count(*)::text count FROM integration_approval_imports',
+    );
+    expect(imports.rows[0]?.count).toBe('1');
   });
 
   it('stores verification receipts immutably and exposes append-only revocation status', async () => {
@@ -229,5 +267,50 @@ describe('Stage 5 PostgreSQL integration foundation', () => {
       { id: 'SYNTH-NOTIFICATION-001', state: 'DELIVERED' },
       { id: 'SYNTH-NOTIFICATION-002', state: 'DEAD_LETTER' },
     ]);
+  });
+
+  it('prevents concurrent duplicate claims and recovers an expired notification lease', async () => {
+    const store = new PostgresIntegrationStore(pool);
+    await store.enqueue(
+      {
+        attemptCount: 0,
+        destinationReference: 'SYNTH-DESTINATION-LEASE',
+        messageCode: 'SYNTH-CASE-UPDATED',
+        notificationId: 'SYNTH-NOTIFICATION-LEASE-001',
+        state: 'PENDING',
+      },
+      '2026-10-26T11:59:00.000Z',
+    );
+    const [first, competing] = await Promise.all([
+      store.claim('2026-10-26T12:00:00.000Z'),
+      store.claim('2026-10-26T12:00:00.000Z'),
+    ]);
+    expect([first, competing].filter((value) => value !== null)).toHaveLength(1);
+    await expect(store.claim('2026-10-26T12:00:31.000Z')).resolves.toMatchObject({
+      attemptCount: 2,
+      state: 'IN_FLIGHT',
+    });
+  });
+
+  it('persists immutable identifier-safe security events', async () => {
+    const store = new PostgresIntegrationStore(pool);
+    await store.record({
+      actorReference: 'SYNTH-ACTOR-SECURITY-001',
+      correlationReference: 'SYNTH-CORRELATION-SECURITY-001',
+      details: { route: '/v1/cases/:reference', status: 403 },
+      eventCode: 'ACTION_FORBIDDEN',
+    });
+    const event = await pool.query<{ details: Record<string, unknown>; event_code: string }>(
+      'SELECT event_code,details FROM integration_security_events',
+    );
+    expect(event.rows).toEqual([
+      {
+        details: { route: '/v1/cases/:reference', status: 403 },
+        event_code: 'ACTION_FORBIDDEN',
+      },
+    ]);
+    await expect(
+      pool.query(`UPDATE integration_security_events SET event_code='SYNTH-CHANGED'`),
+    ).rejects.toMatchObject({ code: '55000' });
   });
 });
