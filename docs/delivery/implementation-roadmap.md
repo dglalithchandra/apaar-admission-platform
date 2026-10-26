@@ -48,6 +48,8 @@ Exit condition satisfied on 26 October 2026: `npm run check`, all 43 real-Postgr
 
 Connect approved AICTE feed, APAAR/API Setu sandbox then production, SSO, notification gateway, existing institutional systems and approved signing service. Each integration gets a simulator, contract test and outage mode.
 
+Local foundation implemented on 26 October 2026: authenticated Node HTTP gateway, deny-by-default role/tenant rules, production-shaped OIDC and APAAR ports, deterministic simulators, digest-checked approval import boundary, retry/dead-letter notification worker, minimal expiring verification receipts, synthetic signing, migration 0004 and portal integration-assurance states. Stage 5 remains **in progress**, because no live provider contract, credential, SSO tenant, authoritative approval feed, notification gateway or signing authority is available. The gateway currently exercises three representative Stage 4 HTTP handoffs; the remaining OpenAPI controller mappings are required before production release.
+
 ## Stage 6 — scale and assurance
 
 Peak-load tests using agreed volumes, disaster recovery, penetration test, privacy impact assessment, accessibility audit, multilingual research, supply-chain controls, observability and operational runbooks.

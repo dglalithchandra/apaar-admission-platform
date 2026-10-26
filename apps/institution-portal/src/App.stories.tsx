@@ -60,3 +60,20 @@ export const CheckerCasework: Story = {
     await expect(canvas.getByRole('button', { name: 'Confirm implementation' })).toBeVisible();
   },
 };
+
+export const IntegrationAssurance: Story = {
+  args: { initialView: 'INTEGRATIONS' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'Check readiness' }));
+    await expect(
+      await canvas.findByRole('region', { name: 'Dependency readiness' }),
+    ).toHaveTextContent('apaarDISABLED');
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Issue synthetic verification receipt' }),
+    );
+    await expect(
+      await canvas.findByRole('region', { name: 'SYNTH-VERIFICATION-PORTAL-001' }),
+    ).toBeVisible();
+  },
+};

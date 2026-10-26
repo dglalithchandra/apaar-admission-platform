@@ -2,7 +2,10 @@ import { useMemo, useRef, useState, type ChangeEvent, type DragEvent, type JSX }
 import { CaseworkWorkspace } from './CaseworkWorkspace.js';
 import type { CaseworkClient, CaseworkRole } from './casework-types.js';
 import { DemoCaseworkClient } from './demo-casework-client.js';
+import { DemoIntegrationClient } from './demo-integration-client.js';
 import { DemoPortalClient } from './demo-client.js';
+import { IntegrationWorkspace } from './IntegrationWorkspace.js';
+import type { IntegrationClient } from './integration-types.js';
 import type { PortalBatch, PortalClient, PortalRow, RowStatus } from './types.js';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -88,20 +91,26 @@ function Summary({ batch }: { readonly batch: PortalBatch }): JSX.Element {
 export function App({
   client,
   caseworkClient,
+  integrationClient,
   initialRole = 'INSTITUTION_OPERATOR',
   initialView = 'BATCH',
 }: {
   readonly client?: PortalClient;
   readonly caseworkClient?: CaseworkClient;
+  readonly integrationClient?: IntegrationClient;
   readonly initialRole?: CaseworkRole;
-  readonly initialView?: 'BATCH' | 'CASEWORK';
+  readonly initialView?: 'BATCH' | 'CASEWORK' | 'INTEGRATIONS';
 }): JSX.Element {
   const batchClient = useMemo(() => client ?? new DemoPortalClient(), [client]);
   const governedCaseworkClient = useMemo(
     () => caseworkClient ?? new DemoCaseworkClient(),
     [caseworkClient],
   );
-  const [view, setView] = useState<'BATCH' | 'CASEWORK'>(initialView);
+  const governedIntegrationClient = useMemo(
+    () => integrationClient ?? new DemoIntegrationClient(),
+    [integrationClient],
+  );
+  const [view, setView] = useState<'BATCH' | 'CASEWORK' | 'INTEGRATIONS'>(initialView);
   const [role, setRole] = useState<CaseworkRole>(initialRole);
   const [selected, setSelected] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -227,6 +236,15 @@ export function App({
           >
             Casework
           </button>
+          <button
+            aria-current={view === 'INTEGRATIONS' ? 'page' : undefined}
+            onClick={() => {
+              setView('INTEGRATIONS');
+            }}
+            type="button"
+          >
+            Integration assurance
+          </button>
           <div className="support-note">
             <strong>Need help?</strong>
             <span>Keep the receipt reference when contacting support.</span>
@@ -235,6 +253,8 @@ export function App({
         <main id="main-content">
           {view === 'CASEWORK' ? (
             <CaseworkWorkspace client={governedCaseworkClient} role={role} />
+          ) : view === 'INTEGRATIONS' ? (
+            <IntegrationWorkspace client={governedIntegrationClient} />
           ) : (
             <>
               <div className="page-heading">

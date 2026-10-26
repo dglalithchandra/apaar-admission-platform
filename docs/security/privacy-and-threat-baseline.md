@@ -45,3 +45,12 @@ Logs contain request and record references, not full identifiers or uploaded row
 - Admission corrections, cancellations and transfers append versions; they never rewrite the original admission decision. Implementation receipts, reservation releases, audit events and outbox events are immutable and transactionally atomic.
 - Cancellation and transfer capabilities default to blocked. Only an active `SOURCE_CONFIRMED` or `AUTHORITY_CONFIGURED` policy version can enable a capability, and activation requires independent maker and checker references.
 - Case evidence, free text and exported audit views can still contain sensitive context. Production transport must add content scanning, field-level redaction, download authorization, retention enforcement and security monitoring before deployment.
+
+## Stage 5 integration controls
+
+- Synthetic authentication and provider simulation are rejected by production configuration. JWT authority is accepted only through an injected signature-verifying OIDC component.
+- Gateway authorization denies by default and combines role with institution scope. Cross-institution institution-user access returns not found.
+- JSON bodies, request rates and dependency calls are bounded. Correlation references are returned without logging bearer tokens or academic identifiers.
+- External provider encoding/decoding is not implemented from guesses; an approved translator is required. Transient failures remain unavailable or rate-limited.
+- Verification requires purpose plus consent or approved legal basis, discloses only requested supported claims, expires and can be revoked append-only.
+- The local signing adapter is explicitly non-production. Production keys, issuer status and certificate profiles remain blocked.

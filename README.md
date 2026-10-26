@@ -25,6 +25,8 @@ The foundation through Build Stage 4 is complete:
 
 Build Stage 4 completed locally on 26 October 2026. The final gate passed 56 casework unit tests with 100% measured coverage, 21/21 real `postgres:17.6-alpine` casework tests, 23/23 portal tests and every earlier Stage 2 and Stage 3 PostgreSQL suite. Browser acceptance passed at 390 × 844 and 1440 × 900, including keyboard-only access to Casework and the complete synthetic institution → reviewer → checker → implementation-receipt journey. The acceptance run found and fixed the hidden narrow-width navigation defect; browser console warnings and errors were empty after the repair.
 
+Build Stage 5 is in progress. A local authenticated integration-gateway foundation now provides deny-by-default role/tenant authorization, health/readiness, an APAAR anti-corruption adapter and simulator, digest-checked approval imports, informational notification delivery, minimal verification receipts, a synthetic signing boundary and PostgreSQL migration 0004. Live government, SSO, notification and signing integrations remain disabled pending the authority inputs in the blocker register.
+
 No real student data, credentials or official AICTE/APAAR branding are present.
 
 ## Read first
@@ -65,7 +67,7 @@ No real student data, credentials or official AICTE/APAAR branding are present.
 
 Git, Node.js and npm are available on this machine. Docker Desktop uses its WSL 2 Linux engine, and the framework-independent TypeScript domain kernel, application-service tests and PostgreSQL Testcontainers suite run locally. See [local toolchain status](docs/delivery/local-toolchain-status.md).
 
-Use `npm run check` for formatting, linting, types, coverage, contracts and builds. Use `npm run test:integration:postgres` for the Stage 2 persistence suite, `npm run test:e2e:batch` for the Stage 3 real-PostgreSQL journey and `npm run test:e2e:casework` for the Stage 4 PostgreSQL governance suite. The portal runs locally with `npm run dev -w @apaar-platform/institution-portal`.
+Use `npm run check` for formatting, linting, types, coverage, contracts and builds. Use `npm run test:integration:postgres` for Stage 2, `npm run test:e2e:batch` for Stage 3, `npm run test:e2e:casework` for Stage 4 and `npm run test:e2e:gateway` for the Stage 5 local PostgreSQL boundary. The portal runs locally with `npm run dev -w @apaar-platform/institution-portal`.
 
 ## Data safety
 

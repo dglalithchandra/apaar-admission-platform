@@ -1,0 +1,167 @@
+export const GATEWAY_ROLES = [
+  'INSTITUTION_OPERATOR',
+  'INSTITUTION_ADMINISTRATOR',
+  'AICTE_REVIEWER',
+  'AICTE_CHECKER',
+  'AUDITOR',
+  'AUTHORIZED_VERIFIER',
+  'SERVICE_INTEGRATION_CLIENT',
+] as const;
+export type GatewayRole = (typeof GATEWAY_ROLES)[number];
+
+export interface Principal {
+  readonly actorReference: string;
+  readonly institutionId: string | null;
+  readonly organisationReference: string;
+  readonly roles: readonly GatewayRole[];
+}
+
+export interface AuthenticationPort {
+  authenticate(authorization: string | undefined): Promise<Principal | null>;
+}
+
+export type GatewayAction =
+  | 'CASE_CREATE'
+  | 'CASE_RECOMMEND'
+  | 'CASE_DECIDE'
+  | 'IDENTITY_VERIFY'
+  | 'APPROVAL_IMPORT'
+  | 'NOTIFICATION_PROCESS'
+  | 'VERIFICATION_CREATE'
+  | 'AUDIT_READ';
+
+export class GatewayProblem extends Error {
+  public constructor(
+    public readonly code: string,
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'GatewayProblem';
+  }
+}
+
+export interface GatewayClock {
+  now(): string;
+}
+
+export type AcademicIdentityStatus =
+  | 'VERIFIED'
+  | 'NOT_FOUND'
+  | 'MISMATCH'
+  | 'TEMPORARILY_UNAVAILABLE'
+  | 'RATE_LIMITED'
+  | 'NOT_ELIGIBLE_FOR_APAAR'
+  | 'MANUAL_REVIEW'
+  | 'UNVERIFIED';
+
+export interface AcademicIdentityResult {
+  readonly checkedAt: string;
+  readonly providerContractVersion: string;
+  readonly providerRequestReference: string | null;
+  readonly status: AcademicIdentityStatus;
+}
+
+export interface AcademicIdentityPort {
+  verify(input: {
+    readonly academicIdentity: string;
+    readonly correlationReference: string;
+    readonly purpose: 'ADMISSION_LINKING' | 'CORRECTION_REVIEW';
+  }): Promise<AcademicIdentityResult>;
+}
+
+export interface ApprovalImportManifest {
+  readonly authority: 'SOURCE_CONFIRMED' | 'AUTHORITY_CONFIGURED' | 'PROPOSED';
+  readonly campusId: string;
+  readonly courseId: string;
+  readonly digestSha256: string;
+  readonly effectiveFrom: string;
+  readonly effectiveTo: string | null;
+  readonly importReference: string;
+  readonly institutionId: string;
+  readonly payload: Readonly<Record<string, unknown>>;
+  readonly programmeId: string;
+  readonly sourceSystem: string;
+  readonly sourceVersion: string;
+  readonly supersedesImportReference: string | null;
+}
+
+export interface ApprovalImportResult {
+  readonly importReference: string;
+  readonly replayed: boolean;
+  readonly status: 'IMPORTED' | 'PROPOSED';
+}
+
+export interface ApprovalImportPort {
+  import(manifest: ApprovalImportManifest, principal: Principal): Promise<ApprovalImportResult>;
+}
+
+export interface NotificationDelivery {
+  readonly attemptCount: number;
+  readonly destinationReference: string;
+  readonly messageCode: string;
+  readonly notificationId: string;
+  readonly state: 'PENDING' | 'DELIVERED' | 'RETRYABLE' | 'DEAD_LETTER';
+}
+
+export interface NotificationGatewayPort {
+  deliver(delivery: NotificationDelivery): Promise<'DELIVERED' | 'RETRYABLE' | 'FAILED'>;
+}
+
+export interface NotificationRepositoryPort {
+  claim(now: string): Promise<NotificationDelivery | null>;
+  complete(
+    notificationId: string,
+    outcome: 'DELIVERED' | 'RETRYABLE' | 'DEAD_LETTER',
+  ): Promise<void>;
+}
+
+export interface AdmissionFacts {
+  readonly academicYear: string;
+  readonly admissionReference: string;
+  readonly currentStatus: string;
+  readonly institutionReference: string;
+  readonly programmeReference: string;
+}
+
+export type VerificationClaim =
+  'ADMISSION_EXISTS' | 'INSTITUTION' | 'PROGRAMME' | 'ACADEMIC_YEAR' | 'CURRENT_STATUS';
+
+export interface VerificationReceipt {
+  readonly algorithm: string;
+  readonly claims: Readonly<Record<string, string | boolean>>;
+  readonly expiresAt: string;
+  readonly issuedAt: string;
+  readonly keyId: string;
+  readonly legalBasisReference: string;
+  readonly purpose: string;
+  readonly requesterOrganisation: string;
+  readonly signature: string;
+  readonly status: 'ACTIVE' | 'REVOKED';
+  readonly verificationReference: string;
+}
+
+export interface AdmissionFactsPort {
+  get(admissionReference: string): Promise<AdmissionFacts | null>;
+}
+
+export interface SigningPort {
+  sign(
+    payload: string,
+  ): Promise<{ readonly algorithm: string; readonly keyId: string; readonly signature: string }>;
+}
+
+export interface VerificationReceiptPort {
+  find(
+    idempotencyKey: string,
+  ): Promise<{ readonly hash: string; readonly receipt: VerificationReceipt } | null>;
+  save(idempotencyKey: string, hash: string, receipt: VerificationReceipt): Promise<void>;
+}
+
+export interface ExistingServiceTransportPort {
+  execute(
+    operation: 'CASE_CREATE' | 'CASE_RECOMMEND' | 'CASE_DECIDE',
+    input: Readonly<Record<string, unknown>>,
+    principal: Principal,
+  ): Promise<unknown>;
+}

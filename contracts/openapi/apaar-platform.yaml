@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: APAAR Admission Registry API
-  version: 0.3.0-draft
+  version: 0.4.0-draft
   description: >-
     Product-owned draft for institution submission, decision tracking and
     purpose-limited verification. It is not an official AICTE or APAAR API.
@@ -35,6 +35,74 @@ paths:
           description: Service is unavailable
         '429':
           description: Health polling rate limit exceeded
+  /ready:
+    get:
+      operationId: getReadiness
+      summary: Report readiness and non-sensitive dependency classes
+      security: []
+      responses:
+        '200':
+          description: The service can accept traffic
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Readiness' }
+        '503':
+          description: A required dependency is degraded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Readiness' }
+        '429':
+          description: Readiness polling rate limit exceeded
+  /v1/dependencies:
+    get:
+      operationId: getDependencyStatus
+      summary: Return redacted dependency classes to an authorised auditor
+      responses:
+        '200':
+          description: Redacted dependency states
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DependencyStatus' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/integration/approval-imports:
+    post:
+      operationId: importApprovalManifest
+      summary: Register one digest-verified effective-dated approval manifest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApprovalImportManifest' }
+      responses:
+        '201':
+          description: Imported or recorded as explicitly proposed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApprovalImportResult' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/notifications/process:
+    post:
+      operationId: processOneNotification
+      summary: Process one informational outbox notification through the configured adapter
+      responses:
+        '200':
+          description: Delivery result or an empty queue
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [delivery]
+                properties:
+                  delivery:
+                    anyOf:
+                      - $ref: '#/components/schemas/NotificationDelivery'
+                      - type: 'null'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /v1/institutions/{institutionId}/admission-batches:
     post:
       operationId: createAdmissionBatch
@@ -779,6 +847,7 @@ paths:
                     type: string
                     enum: [ADMISSION_EXISTS, INSTITUTION, PROGRAMME, ACADEMIC_YEAR, CURRENT_STATUS]
                 consentReference: { type: [string, 'null'] }
+                legalBasisReference: { type: [string, 'null'] }
       responses:
         '200':
           description: Purpose-limited result
@@ -786,12 +855,32 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [verificationReference, issuedAt, claims]
+                required:
+                  [
+                    verificationReference,
+                    issuedAt,
+                    expiresAt,
+                    claims,
+                    requesterOrganisation,
+                    purpose,
+                    legalBasisReference,
+                    keyId,
+                    algorithm,
+                    signature,
+                    status,
+                  ]
                 properties:
                   verificationReference: { type: string }
                   issuedAt: { type: string, format: date-time }
-                  expiresAt: { type: [string, 'null'], format: date-time }
+                  expiresAt: { type: string, format: date-time }
                   claims: { type: object, additionalProperties: true }
+                  requesterOrganisation: { type: string }
+                  purpose: { type: string }
+                  legalBasisReference: { type: string }
+                  keyId: { type: string }
+                  algorithm: { type: string }
+                  signature: { type: string }
+                  status: { type: string, enum: [ACTIVE, REVOKED] }
         '403':
           description: Caller is not authorised for the requested purpose or claims
         '422':
@@ -866,6 +955,12 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: The authenticated principal is not authorised for this action
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
     NotFound:
       description: Resource not found or not visible to this caller
       content:
@@ -897,6 +992,75 @@ components:
           schema:
             $ref: '#/components/schemas/CaseView'
   schemas:
+    DependencyState:
+      type: string
+      enum: [UP, DEGRADED, DISABLED]
+    DependencyStatus:
+      type: object
+      additionalProperties: false
+      required: [dependencies]
+      properties:
+        dependencies:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/DependencyState' }
+    Readiness:
+      allOf:
+        - $ref: '#/components/schemas/DependencyStatus'
+        - type: object
+          required: [status]
+          properties:
+            status: { type: string, enum: [UP, DEGRADED] }
+    ApprovalImportManifest:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          importReference,
+          sourceSystem,
+          sourceVersion,
+          digestSha256,
+          authority,
+          institutionId,
+          campusId,
+          programmeId,
+          courseId,
+          effectiveFrom,
+          effectiveTo,
+          payload,
+          supersedesImportReference,
+        ]
+      properties:
+        importReference: { type: string, pattern: '^SYNTH-[A-Z0-9-]+$' }
+        sourceSystem: { type: string, minLength: 1, maxLength: 128 }
+        sourceVersion: { type: string, minLength: 1, maxLength: 128 }
+        digestSha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+        authority: { type: string, enum: [SOURCE_CONFIRMED, AUTHORITY_CONFIGURED, PROPOSED] }
+        institutionId: { type: string }
+        campusId: { type: string }
+        programmeId: { type: string }
+        courseId: { type: string }
+        effectiveFrom: { type: string, format: date }
+        effectiveTo: { type: [string, 'null'], format: date }
+        payload: { type: object, additionalProperties: true }
+        supersedesImportReference: { type: [string, 'null'], pattern: '^SYNTH-[A-Z0-9-]+$' }
+    ApprovalImportResult:
+      type: object
+      additionalProperties: false
+      required: [importReference, replayed, status]
+      properties:
+        importReference: { type: string }
+        replayed: { type: boolean }
+        status: { type: string, enum: [IMPORTED, PROPOSED] }
+    NotificationDelivery:
+      type: object
+      additionalProperties: false
+      required: [notificationId, destinationReference, messageCode, state, attemptCount]
+      properties:
+        notificationId: { type: string }
+        destinationReference: { type: string, pattern: '^SYNTH-[A-Z0-9-]+$' }
+        messageCode: { type: string }
+        state: { type: string, enum: [PENDING, DELIVERED, RETRYABLE, DEAD_LETTER] }
+        attemptCount: { type: integer, minimum: 0 }
     SubmitAdmissionRequest:
       $ref: ../schemas/student-admission.schema.json
     CaseType:
@@ -1216,3 +1380,13 @@ components:
         - TARGET_CAPACITY_UNAVAILABLE
         - IMPLEMENTATION_ALREADY_COMPLETED
         - DEPENDENCY_UNAVAILABLE
+        - UNAUTHENTICATED
+        - REQUEST_VALIDATION_FAILED
+        - CONTENT_TYPE_UNSUPPORTED
+        - REQUEST_TOO_LARGE
+        - REQUEST_JSON_INVALID
+        - RATE_LIMIT_EXCEEDED
+        - IMPORT_DIGEST_MISMATCH
+        - APPROVAL_IMPORT_OVERLAP
+        - LEGAL_BASIS_REQUIRED
+        - VERIFICATION_PURPOSE_REQUIRED

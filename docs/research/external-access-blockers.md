@@ -20,6 +20,8 @@ The former local container-runtime blocker is resolved. Docker Desktop 4.96.3 no
 | Scale and service levels | National peak windows and recovery objectives are not reliably inferable. | Run baseline tests with declared synthetic loads. | Institution count, batch maxima, deadline peak, verification rate, retention, RTO and RPO. |
 | User validation | Public reviews reveal themes but cannot replace task observation with target operators. | Build test scripts and instrument task completion. | Institution operators, AICTE-style reviewers, students and verifiers authorised for research. |
 
+The Stage 5 local gateway does not resolve these authority gates. It proves the adapter, authorization, outage and persistence behavior while keeping live modes disabled. Required production inputs remain: official operation contracts and schemas; organisation-approved credentials in a secrets manager; OIDC issuer/JWKS/audience and claims mapping; authoritative approval-feed signature/profile; notification sender/template approval; and signing issuer/HSM/KMS/revocation policy.
+
 ## Inputs that must never be pasted into chat or committed
 
 Real APAAR/Aadhaar values, names with dates of birth, mobile numbers, emails, production tokens, client secrets, private certificates, HSM material and unredacted institutional exports.

@@ -843,18 +843,21 @@ td {
 @media (max-width: 900px) {
   .workspace {
     grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+    align-content: start;
   }
   .sidebar {
     position: sticky;
     top: 72px;
     z-index: 10;
     display: grid;
-    grid-template-columns: auto repeat(2, minmax(0, 1fr));
+    grid-template-columns: auto repeat(3, minmax(0, 1fr));
     gap: 6px;
     padding: 10px 22px;
     border-right: 0;
     border-bottom: 1px solid var(--line);
     box-shadow: 0 4px 12px rgb(15 48 67 / 8%);
+    align-self: start;
   }
   .nav-label {
     align-self: center;
@@ -946,8 +949,13 @@ td {
   }
   .sidebar {
     top: 72px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     padding: 8px 16px;
+  }
+  .sidebar > button {
+    padding-right: 6px;
+    padding-left: 6px;
+    font-size: 12px;
   }
   .nav-label {
     position: absolute;
@@ -959,5 +967,60 @@ td {
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+}
+
+.integration-warning {
+  display: flex;
+  gap: 10px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  color: #624a00;
+  background: #fff7d6;
+  border-left: 4px solid #c58a00;
+}
+.integration-warning span {
+  color: #665c3d;
+}
+.integration-panel {
+  margin-bottom: 20px;
+}
+.integration-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.integration-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.integration-grid article {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.integration-grid span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.integration-grid strong {
+  color: var(--navy);
+  font-size: 22px;
+}
+
+@media (max-width: 600px) {
+  .integration-warning {
+    flex-direction: column;
+  }
+  .integration-actions .button,
+  .integration-grid {
+    width: 100%;
+  }
+  .integration-grid {
+    grid-template-columns: 1fr;
   }
 }

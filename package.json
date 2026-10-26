@@ -24,6 +24,7 @@
     "test:coverage": "npm run test:coverage --workspaces --if-present",
     "test:e2e:batch": "npm run test:integration -w @apaar-platform/batch-ingestion",
     "test:e2e:casework": "npm run test:integration -w @apaar-platform/admission-casework",
+    "test:e2e:gateway": "npm run test:integration -w @apaar-platform/integration-gateway",
     "test:integration:postgres": "npm run test:integration -w @apaar-platform/admission-application",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "validate:contracts": "redocly lint contracts/openapi/apaar-platform.yaml && tsx scripts/validate-json-schema.ts"
