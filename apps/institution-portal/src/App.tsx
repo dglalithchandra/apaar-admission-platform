@@ -1,4 +1,7 @@
 import { useMemo, useRef, useState, type ChangeEvent, type DragEvent, type JSX } from 'react';
+import { CaseworkWorkspace } from './CaseworkWorkspace.js';
+import type { CaseworkClient, CaseworkRole } from './casework-types.js';
+import { DemoCaseworkClient } from './demo-casework-client.js';
 import { DemoPortalClient } from './demo-client.js';
 import type { PortalBatch, PortalClient, PortalRow, RowStatus } from './types.js';
 
@@ -83,10 +86,23 @@ function Summary({ batch }: { readonly batch: PortalBatch }): JSX.Element {
 }
 
 export function App({
-  client = new DemoPortalClient(),
+  client,
+  caseworkClient,
+  initialRole = 'INSTITUTION_OPERATOR',
+  initialView = 'BATCH',
 }: {
   readonly client?: PortalClient;
+  readonly caseworkClient?: CaseworkClient;
+  readonly initialRole?: CaseworkRole;
+  readonly initialView?: 'BATCH' | 'CASEWORK';
 }): JSX.Element {
+  const batchClient = useMemo(() => client ?? new DemoPortalClient(), [client]);
+  const governedCaseworkClient = useMemo(
+    () => caseworkClient ?? new DemoCaseworkClient(),
+    [caseworkClient],
+  );
+  const [view, setView] = useState<'BATCH' | 'CASEWORK'>(initialView);
+  const [role, setRole] = useState<CaseworkRole>(initialRole);
   const [selected, setSelected] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -131,9 +147,9 @@ export function App({
     setBusy(true);
     setError(null);
     try {
-      const created = await client.createBatch(selected);
+      const created = await batchClient.createBatch(selected);
       setBatch(created);
-      setRows(await client.listRows(created.batchId));
+      setRows(await batchClient.listRows(created.batchId));
     } catch {
       setError('The upload could not be completed. Your file has not been accepted; try again.');
     } finally {
@@ -142,21 +158,21 @@ export function App({
   }
 
   async function template(): Promise<void> {
-    downloadText('student-admission-template-v1.0.csv', await client.templateCsv());
+    downloadText('student-admission-template-v1.0.csv', await batchClient.templateCsv());
   }
 
   async function correction(): Promise<void> {
     if (batch !== null) {
       downloadText(
         `corrections-${batch.receiptReference}.csv`,
-        await client.correctionCsv(batch.batchId),
+        await batchClient.correctionCsv(batch.batchId),
       );
     }
   }
 
   async function retry(row: PortalRow): Promise<void> {
     if (batch === null || row.status !== 'FAILED_RETRYABLE') return;
-    const updated = await client.retryRow(batch.batchId, row.recordKey);
+    const updated = await batchClient.retryRow(batch.batchId, row.recordKey);
     setRows((current) =>
       current.map((item) => (item.recordKey === row.recordKey ? updated : item)),
     );
@@ -174,215 +190,254 @@ export function App({
         </div>
         <div className="session">
           <span>Synthetic Institute of Technology</span>
-          <strong>Institution operator</strong>
+          <label className="role-switcher">
+            <span className="sr-only">Preview role</span>
+            <select
+              aria-label="Preview role"
+              onChange={(event) => {
+                setRole(event.currentTarget.value as CaseworkRole);
+              }}
+              value={role}
+            >
+              <option value="INSTITUTION_OPERATOR">Institution operator</option>
+              <option value="AICTE_REVIEWER">AICTE reviewer</option>
+              <option value="AICTE_CHECKER">AICTE checker</option>
+            </select>
+          </label>
         </div>
       </header>
       <div className="workspace">
         <nav aria-label="Institution navigation" className="sidebar">
           <p className="nav-label">Admissions</p>
-          <a aria-current="page" href="#upload">
+          <button
+            aria-current={view === 'BATCH' ? 'page' : undefined}
+            onClick={() => {
+              setView('BATCH');
+            }}
+            type="button"
+          >
             Batch upload
-          </a>
-          <a href="#results">Submission history</a>
+          </button>
+          <button
+            aria-current={view === 'CASEWORK' ? 'page' : undefined}
+            onClick={() => {
+              setView('CASEWORK');
+            }}
+            type="button"
+          >
+            Casework
+          </button>
           <div className="support-note">
             <strong>Need help?</strong>
             <span>Keep the receipt reference when contacting support.</span>
           </div>
         </nav>
         <main id="main-content">
-          <div className="page-heading">
-            <div>
-              <p className="eyebrow">2026–27 admission cycle</p>
-              <h1>Upload student admission data</h1>
-              <p>
-                Validate a product-owned CSV template, receive an immutable receipt and correct only
-                the rows requiring action.
-              </p>
-            </div>
-            <button
-              className="button button--secondary"
-              onClick={() => void template()}
-              type="button"
-            >
-              Download template v1.0
-            </button>
-          </div>
-
-          {error !== null && (
-            <div aria-labelledby="error-title" className="error-summary" role="alert">
-              <strong id="error-title">There is a problem</strong>
-              <p>{error}</p>
-            </div>
-          )}
-
-          <section aria-labelledby="upload-heading" className="panel upload-panel" id="upload">
-            <div className="section-heading">
-              <div>
-                <p className="step">Step 1 of 2</p>
-                <h2 id="upload-heading">Select the completed CSV</h2>
-              </div>
-              <span className="template-badge">Template 1.0</span>
-            </div>
-            <p className="guidance">
-              Maximum 5 MB and 10,000 rows. Use UTF-8 CSV. Do not include names, dates of birth,
-              Aadhaar numbers or contact details.
-            </p>
-            <div
-              className="dropzone"
-              onDragOver={(event) => {
-                event.preventDefault();
-              }}
-              onDrop={dropped}
-            >
-              <div className="upload-icon" aria-hidden="true">
-                ↑
-              </div>
-              <label htmlFor="batch-file">Choose a CSV file</label>
-              <span>or drag and drop it here</span>
-              <input
-                accept=".csv,text/csv"
-                id="batch-file"
-                onChange={fileChanged}
-                ref={input}
-                type="file"
-              />
-            </div>
-            {selected !== null && (
-              <div className="selected-file" aria-live="polite">
-                <div>
-                  <strong>{selected.name}</strong>
-                  <span>{Math.max(1, Math.round(selected.size / 1024))} KB · ready to upload</span>
-                </div>
-                <button
-                  onClick={() => {
-                    setSelected(null);
-                  }}
-                  type="button"
-                >
-                  Remove
-                </button>
-              </div>
-            )}
-            <div className="panel-actions">
-              <span>Receipt creation does not mean every row is accepted.</span>
-              <button
-                className="button"
-                disabled={busy}
-                onClick={() => void submit()}
-                type="button"
-              >
-                {busy ? 'Uploading…' : 'Upload and validate'}
-              </button>
-            </div>
-          </section>
-
-          {batch === null ? (
-            <section className="empty-state" id="results">
-              <span aria-hidden="true">≡</span>
-              <h2>No batch selected</h2>
-              <p>Upload a CSV to see reconciled totals and row-level results.</p>
-            </section>
+          {view === 'CASEWORK' ? (
+            <CaseworkWorkspace client={governedCaseworkClient} role={role} />
           ) : (
             <>
-              <Summary batch={batch} />
-              <section aria-labelledby="rows-heading" className="panel results-panel" id="results">
+              <div className="page-heading">
+                <div>
+                  <p className="eyebrow">2026–27 admission cycle</p>
+                  <h1>Upload student admission data</h1>
+                  <p>
+                    Validate a product-owned CSV template, receive an immutable receipt and correct
+                    only the rows requiring action.
+                  </p>
+                </div>
+                <button
+                  className="button button--secondary"
+                  onClick={() => void template()}
+                  type="button"
+                >
+                  Download template v1.0
+                </button>
+              </div>
+
+              {error !== null && (
+                <div aria-labelledby="error-title" className="error-summary" role="alert">
+                  <strong id="error-title">There is a problem</strong>
+                  <p>{error}</p>
+                </div>
+              )}
+
+              <section aria-labelledby="upload-heading" className="panel upload-panel" id="upload">
                 <div className="section-heading">
                   <div>
-                    <p className="step">Step 2 of 2</p>
-                    <h2 id="rows-heading">Review row results</h2>
+                    <p className="step">Step 1 of 2</p>
+                    <h2 id="upload-heading">Select the completed CSV</h2>
                   </div>
+                  <span className="template-badge">Template 1.0</span>
+                </div>
+                <p className="guidance">
+                  Maximum 5 MB and 10,000 rows. Use UTF-8 CSV. Do not include names, dates of birth,
+                  Aadhaar numbers or contact details.
+                </p>
+                <div
+                  className="dropzone"
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                  }}
+                  onDrop={dropped}
+                >
+                  <div className="upload-icon" aria-hidden="true">
+                    ↑
+                  </div>
+                  <label htmlFor="batch-file">Choose a CSV file</label>
+                  <span>or drag and drop it here</span>
+                  <input
+                    accept=".csv,text/csv"
+                    id="batch-file"
+                    onChange={fileChanged}
+                    ref={input}
+                    type="file"
+                  />
+                </div>
+                {selected !== null && (
+                  <div className="selected-file" aria-live="polite">
+                    <div>
+                      <strong>{selected.name}</strong>
+                      <span>
+                        {Math.max(1, Math.round(selected.size / 1024))} KB · ready to upload
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelected(null);
+                      }}
+                      type="button"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+                <div className="panel-actions">
+                  <span>Receipt creation does not mean every row is accepted.</span>
                   <button
-                    className="button button--secondary"
-                    onClick={() => void correction()}
+                    className="button"
+                    disabled={busy}
+                    onClick={() => void submit()}
                     type="button"
                   >
-                    Download correction CSV
+                    {busy ? 'Uploading…' : 'Upload and validate'}
                   </button>
                 </div>
-                <div className="filters">
-                  <label>
-                    Search record key
-                    <input
-                      onChange={(event) => {
-                        setQuery(event.currentTarget.value);
-                      }}
-                      placeholder="SYNTH-RECORD-…"
-                      type="search"
-                      value={query}
-                    />
-                  </label>
-                  <label>
-                    Result
-                    <select
-                      onChange={(event) => {
-                        setFilter(event.currentTarget.value as 'ALL' | RowStatus);
-                      }}
-                      value={filter}
-                    >
-                      {FILTERS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                <div className="table-scroll">
-                  <table>
-                    <caption className="sr-only">Admission batch row results</caption>
-                    <thead>
-                      <tr>
-                        <th scope="col">Row</th>
-                        <th scope="col">Record key</th>
-                        <th scope="col">Result</th>
-                        <th scope="col">Explanation</th>
-                        <th scope="col">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visibleRows.map((row) => (
-                        <tr key={row.recordKey}>
-                          <td>{row.rowNumber}</td>
-                          <td className="record-key">{row.recordKey}</td>
-                          <td>
-                            <StatusPill status={row.status} />
-                          </td>
-                          <td>
-                            {row.findings.length === 0 ? (
-                              <span className="muted">No issues</span>
-                            ) : (
-                              <div className="finding">
-                                <strong>{row.findings[0]?.code}</strong>
-                                <span>{row.findings[0]?.message}</span>
-                              </div>
-                            )}
-                          </td>
-                          <td>
-                            {row.status === 'FAILED_RETRYABLE' ? (
-                              <button
-                                className="text-button"
-                                onClick={() => void retry(row)}
-                                type="button"
-                              >
-                                Retry row
-                              </button>
-                            ) : row.admissionReference !== null ? (
-                              <span className="reference">{row.admissionReference}</span>
-                            ) : (
-                              <span className="muted">Use correction file</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {visibleRows.length === 0 && (
-                  <p className="no-results" role="status">
-                    No rows match the current filters.
-                  </p>
-                )}
               </section>
+
+              {batch === null ? (
+                <section className="empty-state" id="results">
+                  <span aria-hidden="true">≡</span>
+                  <h2>No batch selected</h2>
+                  <p>Upload a CSV to see reconciled totals and row-level results.</p>
+                </section>
+              ) : (
+                <>
+                  <Summary batch={batch} />
+                  <section
+                    aria-labelledby="rows-heading"
+                    className="panel results-panel"
+                    id="results"
+                  >
+                    <div className="section-heading">
+                      <div>
+                        <p className="step">Step 2 of 2</p>
+                        <h2 id="rows-heading">Review row results</h2>
+                      </div>
+                      <button
+                        className="button button--secondary"
+                        onClick={() => void correction()}
+                        type="button"
+                      >
+                        Download correction CSV
+                      </button>
+                    </div>
+                    <div className="filters">
+                      <label>
+                        Search record key
+                        <input
+                          onChange={(event) => {
+                            setQuery(event.currentTarget.value);
+                          }}
+                          placeholder="SYNTH-RECORD-…"
+                          type="search"
+                          value={query}
+                        />
+                      </label>
+                      <label>
+                        Result
+                        <select
+                          onChange={(event) => {
+                            setFilter(event.currentTarget.value as 'ALL' | RowStatus);
+                          }}
+                          value={filter}
+                        >
+                          {FILTERS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <div className="table-scroll">
+                      <table>
+                        <caption className="sr-only">Admission batch row results</caption>
+                        <thead>
+                          <tr>
+                            <th scope="col">Row</th>
+                            <th scope="col">Record key</th>
+                            <th scope="col">Result</th>
+                            <th scope="col">Explanation</th>
+                            <th scope="col">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {visibleRows.map((row) => (
+                            <tr key={row.recordKey}>
+                              <td>{row.rowNumber}</td>
+                              <td className="record-key">{row.recordKey}</td>
+                              <td>
+                                <StatusPill status={row.status} />
+                              </td>
+                              <td>
+                                {row.findings.length === 0 ? (
+                                  <span className="muted">No issues</span>
+                                ) : (
+                                  <div className="finding">
+                                    <strong>{row.findings[0]?.code}</strong>
+                                    <span>{row.findings[0]?.message}</span>
+                                  </div>
+                                )}
+                              </td>
+                              <td>
+                                {row.status === 'FAILED_RETRYABLE' ? (
+                                  <button
+                                    className="text-button"
+                                    onClick={() => void retry(row)}
+                                    type="button"
+                                  >
+                                    Retry row
+                                  </button>
+                                ) : row.admissionReference !== null ? (
+                                  <span className="reference">{row.admissionReference}</span>
+                                ) : (
+                                  <span className="muted">Use correction file</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {visibleRows.length === 0 && (
+                      <p className="no-results" role="status">
+                        No rows match the current filters.
+                      </p>
+                    )}
+                  </section>
+                </>
+              )}
             </>
           )}
         </main>

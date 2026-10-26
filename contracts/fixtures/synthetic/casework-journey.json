@@ -1,0 +1,87 @@
+{
+  "createCase": {
+    "admissionId": "SYNTH-ADMISSION-SOURCE-001",
+    "caseType": "ADMISSION_CANCELLATION",
+    "policyVersion": "SYNTH-POLICY-2026-01",
+    "policyAuthority": "AUTHORITY_CONFIGURED",
+    "priority": "NORMAL",
+    "reason": "Synthetic cancellation journey",
+    "purpose": "REGULATORY_CASEWORK",
+    "requestReference": "SYNTH-REQUEST-CREATE-001"
+  },
+  "caseView": {
+    "caseId": "SYNTH-CASE-001",
+    "caseReference": "SYNTH-CASE-REF-001",
+    "admissionId": "SYNTH-ADMISSION-SOURCE-001",
+    "institutionId": "SYNTH-INSTITUTION-001",
+    "caseType": "ADMISSION_CANCELLATION",
+    "state": "APPROVED",
+    "priority": "NORMAL",
+    "version": 5,
+    "policyVersion": "SYNTH-POLICY-2026-01",
+    "policyAuthority": "AUTHORITY_CONFIGURED"
+  },
+  "cancellationImplementation": {
+    "expectedVersion": 5,
+    "sourceAdmissionVersionId": "SYNTH-ADMISSION-VERSION-001",
+    "reason": "Implement approved synthetic cancellation",
+    "purpose": "REGULATORY_CASEWORK",
+    "requestReference": "SYNTH-REQUEST-CANCEL-001"
+  },
+  "cancellationReceipt": {
+    "caseId": "SYNTH-CASE-001",
+    "implementationId": "SYNTH-IMPLEMENTATION-CANCEL-001",
+    "implementationType": "CANCELLATION",
+    "receiptReference": "SYNTH-RECEIPT-CANCEL-001",
+    "releasedReservationIds": ["SYNTH-RESERVATION-ORDINARY-001"],
+    "sourceAdmissionId": "SYNTH-ADMISSION-SOURCE-001",
+    "sourceAdmissionVersionId": "SYNTH-ADMISSION-VERSION-002",
+    "state": "IMPLEMENTED",
+    "targetAdmissionId": null,
+    "targetDecisionId": null
+  },
+  "transferImplementation": {
+    "expectedVersion": 5,
+    "sourceAdmissionVersionId": "SYNTH-ADMISSION-VERSION-010",
+    "reason": "Implement approved synthetic transfer",
+    "purpose": "REGULATORY_CASEWORK",
+    "requestReference": "SYNTH-REQUEST-TRANSFER-001",
+    "targetAdmission": {
+      "recordKey": "SYNTH-TRANSFER-ROW-001",
+      "studentReference": "SYNTH-STUDENT-001",
+      "institutionId": "SYNTH-INSTITUTION-001",
+      "campusId": "SYNTH-CAMPUS-002",
+      "programmeId": "SYNTH-PROGRAMME-001",
+      "courseId": "SYNTH-COURSE-002",
+      "academicYear": "2026-27",
+      "admissionDate": "2026-10-26",
+      "category": "ORDINARY",
+      "lateralCapacitySource": null,
+      "studentStatus": {
+        "nri": false,
+        "oci": false,
+        "foreignNational": false,
+        "gulfWorkerChild": false
+      },
+      "eligibilityEvidence": "VERIFIED",
+      "identityVerification": {
+        "status": "VERIFIED",
+        "checkedAt": "2026-10-26T10:00:00.000Z",
+        "providerContractVersion": "SYNTH-SIMULATOR-1",
+        "providerRequestReference": "SYNTH-IDENTITY-REQUEST-001"
+      }
+    }
+  },
+  "transferReceipt": {
+    "caseId": "SYNTH-CASE-002",
+    "implementationId": "SYNTH-IMPLEMENTATION-TRANSFER-001",
+    "implementationType": "TRANSFER",
+    "receiptReference": "SYNTH-RECEIPT-TRANSFER-001",
+    "releasedReservationIds": ["SYNTH-RESERVATION-ORDINARY-010"],
+    "sourceAdmissionId": "SYNTH-ADMISSION-SOURCE-010",
+    "sourceAdmissionVersionId": "SYNTH-ADMISSION-VERSION-011",
+    "state": "IMPLEMENTED",
+    "targetAdmissionId": "SYNTH-ADMISSION-TARGET-010",
+    "targetDecisionId": "SYNTH-DECISION-TARGET-010"
+  }
+}

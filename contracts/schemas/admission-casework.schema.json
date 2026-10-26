@@ -1,0 +1,476 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/admission-casework.schema.json",
+  "title": "Governed admission casework contracts",
+  "$defs": {
+    "CaseType": {
+      "type": "string",
+      "enum": [
+        "ADMISSION_CORRECTION",
+        "ADMISSION_CANCELLATION",
+        "INSTITUTION_TRANSFER",
+        "PROGRAMME_OR_COURSE_TRANSFER",
+        "CATEGORY_CORRECTION",
+        "IDENTITY_LINK_CORRECTION",
+        "DUPLICATE_ENROLMENT_REVIEW",
+        "CAPACITY_EXCEPTION_REVIEW",
+        "APPEAL",
+        "OTHER_AUTHORISED_REVIEW"
+      ]
+    },
+    "CaseState": {
+      "type": "string",
+      "enum": [
+        "DRAFT",
+        "SUBMITTED",
+        "UNDER_REVIEW",
+        "MORE_INFORMATION_REQUIRED",
+        "RECOMMENDED",
+        "APPROVED",
+        "REJECTED",
+        "WITHDRAWN",
+        "IMPLEMENTED",
+        "IMPLEMENTATION_FAILED"
+      ]
+    },
+    "PolicyAuthority": {
+      "type": "string",
+      "enum": ["SOURCE_CONFIRMED", "AUTHORITY_CONFIGURED", "PROPOSED", "UNKNOWN_BLOCKING"]
+    },
+    "ReasonContext": {
+      "type": "object",
+      "required": ["reason", "purpose", "requestReference"],
+      "properties": {
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "purpose": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "requestReference": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "CreateCaseRequest": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [
+        { "$ref": "#/$defs/ReasonContext" },
+        {
+          "type": "object",
+          "required": ["admissionId", "caseType", "policyVersion", "policyAuthority", "priority"],
+          "properties": {
+            "admissionId": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "caseType": { "$ref": "#/$defs/CaseType" },
+            "policyVersion": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "policyAuthority": { "$ref": "#/$defs/PolicyAuthority" },
+            "priority": { "type": "string", "enum": ["LOW", "NORMAL", "HIGH", "URGENT"] }
+          }
+        }
+      ]
+    },
+    "CaseView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId",
+        "caseReference",
+        "admissionId",
+        "institutionId",
+        "caseType",
+        "state",
+        "priority",
+        "version",
+        "policyVersion",
+        "policyAuthority"
+      ],
+      "properties": {
+        "caseId": { "type": "string" },
+        "caseReference": { "type": "string" },
+        "admissionId": { "type": "string" },
+        "institutionId": { "type": "string" },
+        "caseType": { "$ref": "#/$defs/CaseType" },
+        "state": { "$ref": "#/$defs/CaseState" },
+        "priority": { "type": "string", "enum": ["LOW", "NORMAL", "HIGH", "URGENT"] },
+        "version": { "type": "integer", "minimum": 1 },
+        "policyVersion": { "type": "string" },
+        "policyAuthority": { "$ref": "#/$defs/PolicyAuthority" }
+      }
+    },
+    "CasePage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items", "nextCursor"],
+      "properties": {
+        "items": { "type": "array", "items": { "$ref": "#/$defs/CaseView" } },
+        "nextCursor": { "type": ["string", "null"], "maxLength": 256 }
+      }
+    },
+    "ExpectedVersionRequest": {
+      "allOf": [
+        { "$ref": "#/$defs/ReasonContext" },
+        {
+          "type": "object",
+          "required": ["expectedVersion"],
+          "properties": { "expectedVersion": { "type": "integer", "minimum": 1 } }
+        }
+      ]
+    },
+    "SaveDraftRequest": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [
+        { "$ref": "#/$defs/ExpectedVersionRequest" },
+        {
+          "type": "object",
+          "required": ["priority"],
+          "properties": {
+            "priority": { "type": "string", "enum": ["LOW", "NORMAL", "HIGH", "URGENT"] }
+          }
+        }
+      ]
+    },
+    "AssignmentRequest": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [
+        { "$ref": "#/$defs/ExpectedVersionRequest" },
+        {
+          "type": "object",
+          "required": ["reviewerReference"],
+          "properties": {
+            "reviewerReference": { "type": "string", "minLength": 1, "maxLength": 128 }
+          }
+        }
+      ]
+    },
+    "ConflictDeclarationRequest": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [
+        { "$ref": "#/$defs/ExpectedVersionRequest" },
+        {
+          "type": "object",
+          "required": ["hasConflict"],
+          "properties": { "hasConflict": { "type": "boolean" } }
+        }
+      ]
+    },
+    "InformationRequest": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [
+        { "$ref": "#/$defs/ExpectedVersionRequest" },
+        {
+          "type": "object",
+          "required": ["requestText"],
+          "properties": { "requestText": { "type": "string", "minLength": 1, "maxLength": 2000 } }
+        }
+      ]
+    },
+    "InformationResponse": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [
+        { "$ref": "#/$defs/ExpectedVersionRequest" },
+        {
+          "type": "object",
+          "required": ["informationRequestId", "responseText"],
+          "properties": {
+            "informationRequestId": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "responseText": { "type": "string", "minLength": 1, "maxLength": 4000 }
+          }
+        }
+      ]
+    },
+    "RecommendationRequest": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [
+        { "$ref": "#/$defs/ExpectedVersionRequest" },
+        {
+          "type": "object",
+          "required": ["recommendation", "reasonCode", "explanation", "policyVersion"],
+          "properties": {
+            "recommendation": {
+              "type": "string",
+              "enum": ["APPROVE", "REJECT", "MORE_INFORMATION_REQUIRED"]
+            },
+            "reasonCode": { "type": "string", "minLength": 1, "maxLength": 100 },
+            "explanation": { "type": "string", "minLength": 1, "maxLength": 4000 },
+            "policyVersion": { "type": "string", "minLength": 1, "maxLength": 128 }
+          }
+        }
+      ]
+    },
+    "DecisionRequest": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [
+        { "$ref": "#/$defs/ExpectedVersionRequest" },
+        {
+          "type": "object",
+          "required": ["outcome", "reasonCode", "explanation", "policyVersion"],
+          "properties": {
+            "outcome": { "type": "string", "enum": ["APPROVED", "REJECTED"] },
+            "reasonCode": { "type": "string", "minLength": 1, "maxLength": 100 },
+            "explanation": { "type": "string", "minLength": 1, "maxLength": 4000 },
+            "policyVersion": { "type": "string", "minLength": 1, "maxLength": 128 }
+          }
+        }
+      ]
+    },
+    "CorrectionProposalRequest": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [
+        { "$ref": "#/$defs/ExpectedVersionRequest" },
+        {
+          "type": "object",
+          "required": ["changes"],
+          "properties": {
+            "changes": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["fieldCode", "previousValue", "proposedValue"],
+                "properties": {
+                  "fieldCode": {
+                    "type": "string",
+                    "enum": [
+                      "STUDENT_REFERENCE",
+                      "ACADEMIC_IDENTITY_REFERENCE",
+                      "CATEGORY",
+                      "STUDENT_STATUS",
+                      "PROGRAMME_ID",
+                      "COURSE_ID",
+                      "ADMISSION_DATE",
+                      "ELIGIBILITY_EVIDENCE"
+                    ]
+                  },
+                  "previousValue": true,
+                  "proposedValue": true
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "AppealRequest": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [
+        { "$ref": "#/$defs/ReasonContext" },
+        {
+          "type": "object",
+          "oneOf": [
+            {
+              "required": ["appealedCaseId"],
+              "properties": { "appealedDecisionId": { "type": "null" } }
+            },
+            {
+              "required": ["appealedDecisionId"],
+              "properties": { "appealedCaseId": { "type": "null" } }
+            }
+          ],
+          "properties": {
+            "appealedCaseId": { "type": ["string", "null"], "maxLength": 128 },
+            "appealedDecisionId": { "type": ["string", "null"], "maxLength": 128 },
+            "policyVersion": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "policyAuthority": { "$ref": "#/$defs/PolicyAuthority" },
+            "priority": { "type": "string", "enum": ["LOW", "NORMAL", "HIGH", "URGENT"] }
+          },
+          "required": ["policyVersion", "policyAuthority", "priority"]
+        }
+      ]
+    },
+    "AppealDecisionRequest": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [
+        { "$ref": "#/$defs/ExpectedVersionRequest" },
+        {
+          "type": "object",
+          "required": ["outcome", "reasonCode", "explanation", "policyVersion"],
+          "properties": {
+            "outcome": {
+              "type": "string",
+              "enum": ["UPHELD", "PARTIALLY_UPHELD", "OVERTURNED", "DISMISSED"]
+            },
+            "reasonCode": { "type": "string", "minLength": 1, "maxLength": 100 },
+            "explanation": { "type": "string", "minLength": 1, "maxLength": 4000 },
+            "policyVersion": { "type": "string", "minLength": 1, "maxLength": 128 }
+          }
+        }
+      ]
+    },
+    "TransferImplementationRequest": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [
+        { "$ref": "#/$defs/ExpectedVersionRequest" },
+        {
+          "type": "object",
+          "required": ["sourceAdmissionVersionId", "targetAdmission"],
+          "properties": {
+            "sourceAdmissionVersionId": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "targetAdmission": {
+              "$ref": "./student-admission.schema.json"
+            }
+          }
+        }
+      ]
+    },
+    "CancellationImplementationRequest": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [
+        { "$ref": "#/$defs/ExpectedVersionRequest" },
+        {
+          "type": "object",
+          "required": ["sourceAdmissionVersionId"],
+          "properties": {
+            "sourceAdmissionVersionId": { "type": "string", "minLength": 1, "maxLength": 128 }
+          }
+        }
+      ]
+    },
+    "EvidenceRequest": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [
+        { "$ref": "#/$defs/ExpectedVersionRequest" },
+        {
+          "type": "object",
+          "required": ["evidence"],
+          "properties": {
+            "evidence": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "evidenceId",
+                "malwareStatus",
+                "mediaType",
+                "objectReference",
+                "safeFilename",
+                "sha256"
+              ],
+              "properties": {
+                "evidenceId": { "type": "string", "minLength": 1, "maxLength": 128 },
+                "malwareStatus": { "type": "string", "enum": ["PENDING", "CLEAN", "REJECTED"] },
+                "mediaType": { "type": "string", "minLength": 1, "maxLength": 128 },
+                "objectReference": { "type": "string", "minLength": 1, "maxLength": 500 },
+                "safeFilename": { "type": "string", "minLength": 1, "maxLength": 255 },
+                "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "PurposeRecordRequest": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [
+        { "$ref": "#/$defs/ExpectedVersionRequest" },
+        {
+          "type": "object",
+          "required": ["purposeRecord"],
+          "properties": {
+            "purposeRecord": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "consentReference",
+                "consentStatus",
+                "dataCategories",
+                "legalBasisCategory",
+                "purposeRecordId",
+                "recipientCategory",
+                "retentionPolicyReference"
+              ],
+              "properties": {
+                "consentReference": { "type": ["string", "null"], "maxLength": 128 },
+                "consentStatus": { "type": ["string", "null"], "maxLength": 100 },
+                "dataCategories": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1, "maxLength": 100 }
+                },
+                "legalBasisCategory": { "type": "string", "minLength": 1, "maxLength": 100 },
+                "purposeRecordId": { "type": "string", "minLength": 1, "maxLength": 128 },
+                "recipientCategory": { "type": "string", "minLength": 1, "maxLength": 100 },
+                "retentionPolicyReference": { "type": "string", "minLength": 1, "maxLength": 128 }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ImplementationReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId",
+        "implementationId",
+        "implementationType",
+        "receiptReference",
+        "releasedReservationIds",
+        "sourceAdmissionId",
+        "sourceAdmissionVersionId",
+        "state",
+        "targetAdmissionId",
+        "targetDecisionId"
+      ],
+      "properties": {
+        "caseId": { "type": "string" },
+        "implementationId": { "type": "string" },
+        "implementationType": { "type": "string", "enum": ["CANCELLATION", "TRANSFER"] },
+        "receiptReference": { "type": "string" },
+        "releasedReservationIds": { "type": "array", "items": { "type": "string" } },
+        "sourceAdmissionId": { "type": "string" },
+        "sourceAdmissionVersionId": { "type": "string" },
+        "state": { "type": "string", "const": "IMPLEMENTED" },
+        "targetAdmissionId": { "type": ["string", "null"] },
+        "targetDecisionId": { "type": ["string", "null"] }
+      }
+    },
+    "HistoryPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items", "nextCursor"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["previousState", "nextState", "actorRole", "reason", "changedAt"],
+            "properties": {
+              "previousState": { "anyOf": [{ "$ref": "#/$defs/CaseState" }, { "type": "null" }] },
+              "nextState": { "$ref": "#/$defs/CaseState" },
+              "actorRole": { "type": "string" },
+              "reason": { "type": "string" },
+              "changedAt": { "type": "string", "format": "date-time" }
+            }
+          }
+        },
+        "nextCursor": { "type": ["string", "null"], "maxLength": 256 }
+      }
+    },
+    "PolicyVersionView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policyVersion", "authority", "effectiveFrom", "effectiveTo", "scope", "status"],
+      "properties": {
+        "policyVersion": { "type": "string" },
+        "authority": { "$ref": "#/$defs/PolicyAuthority" },
+        "effectiveFrom": { "type": "string", "format": "date" },
+        "effectiveTo": { "type": ["string", "null"], "format": "date" },
+        "scope": { "type": "object" },
+        "status": { "type": "string", "enum": ["DRAFT", "ACTIVE", "RETIRED"] }
+      }
+    }
+  },
+  "$ref": "#/$defs/CaseView"
+}

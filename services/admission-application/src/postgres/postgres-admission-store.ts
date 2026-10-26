@@ -470,6 +470,66 @@ function isRetryableTransactionFailure(error: unknown): boolean {
   );
 }
 
+async function runIdempotentOnClient(
+  client: PoolClient,
+  options: IdempotentTransactionOptions,
+  work: (transaction: AdmissionTransaction) => Promise<AdmissionSubmissionResult>,
+): Promise<AdmissionSubmissionResult> {
+  await client.query(
+    `INSERT INTO idempotency_records (
+       id, institution_id, idempotency_key, request_hash, status
+     ) VALUES ($1,$2,$3,$4,'PROCESSING')
+     ON CONFLICT (institution_id, idempotency_key) DO NOTHING`,
+    [
+      options.idempotencyRecordId,
+      options.institutionId,
+      options.idempotencyKey,
+      options.requestHash,
+    ],
+  );
+  const claimed = await client.query<{
+    request_hash: string;
+    status: 'PROCESSING' | 'COMPLETED';
+    result: AdmissionSubmissionResult | null;
+  }>(
+    `SELECT request_hash, status, result FROM idempotency_records
+     WHERE institution_id = $1 AND idempotency_key = $2 FOR UPDATE`,
+    [options.institutionId, options.idempotencyKey],
+  );
+  const record = claimed.rows[0];
+  if (record === undefined) {
+    throw new PersistenceInvariantError('The idempotency record could not be claimed.');
+  }
+  if (record.request_hash !== options.requestHash) {
+    throw new IdempotencyConflictError();
+  }
+  if (record.status === 'COMPLETED') {
+    if (record.result === null) {
+      throw new PersistenceInvariantError('A completed idempotency record has no result.');
+    }
+    return { ...record.result, replayed: true };
+  }
+
+  const result = await work(new PostgresAdmissionTransaction(client));
+  await client.query(
+    `UPDATE idempotency_records SET status = 'COMPLETED', result = $1, completed_at = transaction_timestamp()
+     WHERE institution_id = $2 AND idempotency_key = $3 AND status = 'PROCESSING'`,
+    [result, options.institutionId, options.idempotencyKey],
+  );
+  return result;
+}
+
+export class PostgresAdmissionClientUnitOfWork implements AdmissionUnitOfWork {
+  public constructor(private readonly client: PoolClient) {}
+
+  public runIdempotent(
+    options: IdempotentTransactionOptions,
+    work: (transaction: AdmissionTransaction) => Promise<AdmissionSubmissionResult>,
+  ): Promise<AdmissionSubmissionResult> {
+    return runIdempotentOnClient(this.client, options, work);
+  }
+}
+
 export class PostgresAdmissionStore implements AdmissionUnitOfWork, ApprovalSnapshotWriter {
   public constructor(private readonly pool: Pool) {}
 
@@ -481,48 +541,7 @@ export class PostgresAdmissionStore implements AdmissionUnitOfWork, ApprovalSnap
       const client = await this.pool.connect();
       try {
         await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
-        await client.query(
-          `INSERT INTO idempotency_records (
-             id, institution_id, idempotency_key, request_hash, status
-           ) VALUES ($1,$2,$3,$4,'PROCESSING')
-           ON CONFLICT (institution_id, idempotency_key) DO NOTHING`,
-          [
-            options.idempotencyRecordId,
-            options.institutionId,
-            options.idempotencyKey,
-            options.requestHash,
-          ],
-        );
-        const claimed = await client.query<{
-          request_hash: string;
-          status: 'PROCESSING' | 'COMPLETED';
-          result: AdmissionSubmissionResult | null;
-        }>(
-          `SELECT request_hash, status, result FROM idempotency_records
-           WHERE institution_id = $1 AND idempotency_key = $2 FOR UPDATE`,
-          [options.institutionId, options.idempotencyKey],
-        );
-        const record = claimed.rows[0];
-        if (record === undefined) {
-          throw new PersistenceInvariantError('The idempotency record could not be claimed.');
-        }
-        if (record.request_hash !== options.requestHash) {
-          throw new IdempotencyConflictError();
-        }
-        if (record.status === 'COMPLETED') {
-          if (record.result === null) {
-            throw new PersistenceInvariantError('A completed idempotency record has no result.');
-          }
-          await client.query('COMMIT');
-          return { ...record.result, replayed: true };
-        }
-
-        const result = await work(new PostgresAdmissionTransaction(client));
-        await client.query(
-          `UPDATE idempotency_records SET status = 'COMPLETED', result = $1, completed_at = transaction_timestamp()
-           WHERE institution_id = $2 AND idempotency_key = $3 AND status = 'PROCESSING'`,
-          [result, options.institutionId, options.idempotencyKey],
-        );
+        const result = await runIdempotentOnClient(client, options, work);
         await client.query('COMMIT');
         return result;
       } catch (error) {

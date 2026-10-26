@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: APAAR Admission Registry API
-  version: 0.2.0-draft
+  version: 0.3.0-draft
   description: >-
     Product-owned draft for institution submission, decision tracking and
     purpose-limited verification. It is not an official AICTE or APAAR API.
@@ -282,6 +282,480 @@ paths:
                 $ref: '#/components/schemas/IdentityVerificationResult'
         '422':
           $ref: '#/components/responses/ValidationProblem'
+  /v1/institutions/{institutionId}/cases:
+    get:
+      operationId: listAdmissionCases
+      summary: List institution-visible cases using stable cursor pagination
+      parameters:
+        - $ref: '#/components/parameters/InstitutionId'
+        - $ref: '#/components/parameters/CaseTypeFilter'
+        - $ref: '#/components/parameters/CaseStateFilter'
+        - $ref: '#/components/parameters/CaseCursor'
+        - $ref: '#/components/parameters/CasePageSize'
+      responses:
+        '200':
+          description: Institution-scoped case page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CasePage'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      operationId: createAdmissionCase
+      summary: Create one governed case in draft state
+      parameters:
+        - $ref: '#/components/parameters/InstitutionId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCaseRequest'
+      responses:
+        '200':
+          description: Exact idempotent replay
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseView'
+        '201':
+          description: Case created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseView'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationProblem'
+  /v1/cases/{caseId}:
+    get:
+      operationId: getAdmissionCase
+      summary: Read a case visible to the caller without exposing raw identity data
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+      responses:
+        '200':
+          description: Purpose-limited case view
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseView'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      operationId: saveAdmissionCaseDraft
+      summary: Save mutable draft metadata with optimistic concurrency
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveDraftRequest'
+      responses:
+        '200':
+          description: Updated case or exact idempotent replay
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseView'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationProblem'
+  /v1/cases/{caseId}/submit:
+    post:
+      operationId: submitAdmissionCase
+      summary: Submit a draft case for governed review
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        $ref: '#/components/requestBodies/ExpectedVersionAction'
+      responses:
+        '200': { $ref: '#/components/responses/CaseActionResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/cases/{caseId}/withdraw:
+    post:
+      operationId: withdrawAdmissionCase
+      summary: Withdraw an eligible case without deleting its history
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        $ref: '#/components/requestBodies/ExpectedVersionAction'
+      responses:
+        '200': { $ref: '#/components/responses/CaseActionResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/cases/{caseId}/assignments:
+    post:
+      operationId: assignAdmissionCaseReviewer
+      summary: Assign or reassign a reviewer under maker-reviewer separation rules
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AssignmentRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/CaseActionResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/cases/{caseId}/conflict-declarations:
+    post:
+      operationId: declareAdmissionCaseConflict
+      summary: Record the assigned reviewer's conflict-of-interest declaration
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConflictDeclarationRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/CaseActionResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/cases/{caseId}/information-requests:
+    post:
+      operationId: requestAdmissionCaseInformation
+      summary: Request bounded additional information from the institution
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InformationRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/CaseActionResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/cases/{caseId}/information-responses:
+    post:
+      operationId: supplyAdmissionCaseInformation
+      summary: Supply information against a specific open request
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InformationResponse' }
+      responses:
+        '200': { $ref: '#/components/responses/CaseActionResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/cases/{caseId}/recommendations:
+    post:
+      operationId: recommendAdmissionCaseOutcome
+      summary: Record a reviewer recommendation with exact policy provenance
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecommendationRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/CaseActionResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/cases/{caseId}/decisions:
+    post:
+      operationId: decideAdmissionCase
+      summary: Record an independent checker decision
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DecisionRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/CaseActionResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/cases/{caseId}/correction-proposal:
+    post:
+      operationId: addAdmissionCaseCorrectionProposal
+      summary: Add typed proposed changes without overwriting admission history
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CorrectionProposalRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/CaseActionResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/cases/{caseId}/evidence:
+    post:
+      operationId: addAdmissionCaseEvidence
+      summary: Attach metadata for separately scanned evidence; file bytes are never returned here
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EvidenceRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/CaseActionResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+        '503': { $ref: '#/components/responses/DependencyUnavailable' }
+  /v1/cases/{caseId}/purpose-records:
+    post:
+      operationId: recordAdmissionCasePurpose
+      summary: Record purpose, legal basis, recipients and retention before data use
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PurposeRecordRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/CaseActionResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/cases/{caseId}/history:
+    get:
+      operationId: listAdmissionCaseHistory
+      summary: Read append-only lifecycle history with stable pagination
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+        - $ref: '#/components/parameters/CaseCursor'
+        - $ref: '#/components/parameters/CasePageSize'
+      responses:
+        '200':
+          description: Case history page
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HistoryPage' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/institutions/{institutionId}/appeals:
+    post:
+      operationId: createAdmissionCaseAppeal
+      summary: Appeal exactly one eligible case or admission decision
+      parameters:
+        - $ref: '#/components/parameters/InstitutionId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AppealRequest' }
+      responses:
+        '200':
+          description: Exact idempotent replay
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CaseView' }
+        '201':
+          description: Appeal created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CaseView' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/cases/{caseId}/appeal-decision:
+    post:
+      operationId: decideAdmissionCaseAppeal
+      summary: Decide an appeal without implicitly applying a remedy
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AppealDecisionRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/CaseActionResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/cases/{caseId}/implement-cancellation:
+    post:
+      operationId: implementAdmissionCancellation
+      summary: Release the approved admission's reservations once and append a cancelled version
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CancellationImplementationRequest' }
+      responses:
+        '200':
+          description: Implementation receipt or exact idempotent replay
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImplementationReceipt' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/cases/{caseId}/implement-transfer:
+    post:
+      operationId: implementAdmissionTransfer
+      summary: Reserve accepted target capacity before atomically releasing source capacity
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TransferImplementationRequest' }
+      responses:
+        '200':
+          description: Implementation receipt or exact idempotent replay
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImplementationReceipt' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+        '503': { $ref: '#/components/responses/DependencyUnavailable' }
+  /v1/cases/{caseId}/implement-appeal-remedy:
+    post:
+      operationId: implementAdmissionAppealRemedy
+      summary: Request a separately governed appeal remedy; runtime support is intentionally deferred
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        $ref: '#/components/requestBodies/ExpectedVersionAction'
+      responses:
+        '202':
+          description: Remedy command accepted for an authorised implementation workflow
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CaseView' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/casework/case-types:
+    get:
+      operationId: listCaseworkCaseTypes
+      summary: List supported case types and their current authority status
+      responses:
+        '200':
+          description: Case-type catalogue
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [caseType, authority]
+                      properties:
+                        caseType: { $ref: '#/components/schemas/CaseType' }
+                        authority: { $ref: '#/components/schemas/PolicyAuthority' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+  /v1/casework/reason-codes:
+    get:
+      operationId: listCaseworkReasonCodes
+      summary: List stable reason codes suitable for the caller's role and action
+      responses:
+        '200':
+          description: Reason-code catalogue
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [code, label]
+                      properties:
+                        code: { type: string }
+                        label: { type: string }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+  /v1/casework/policies:
+    get:
+      operationId: listCaseworkPolicies
+      summary: List effective policy metadata without protected rule inputs
+      parameters:
+        - name: effectiveOn
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Effective-dated policy metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/PolicyVersionView' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+  /v1/cases/{caseId}/audit:
+    get:
+      operationId: listAdmissionCaseAudit
+      summary: Read purpose-limited audit metadata; restricted to authorised auditors
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+        - $ref: '#/components/parameters/CaseCursor'
+        - $ref: '#/components/parameters/CasePageSize'
+        - name: purpose
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 200 }
+      responses:
+        '200':
+          description: Redacted audit page containing references and event metadata only
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HistoryPage' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
   /v1/verifications:
     post:
       operationId: createPurposeLimitedVerification
@@ -357,6 +831,34 @@ components:
       in: header
       required: true
       schema: { type: string, minLength: 8, maxLength: 128 }
+    CaseId:
+      name: caseId
+      in: path
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 128 }
+    CaseTypeFilter:
+      name: caseType
+      in: query
+      schema: { $ref: '#/components/schemas/CaseType' }
+    CaseStateFilter:
+      name: state
+      in: query
+      schema: { $ref: '#/components/schemas/CaseState' }
+    CaseCursor:
+      name: cursor
+      in: query
+      schema: { type: string, maxLength: 256 }
+    CasePageSize:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+  requestBodies:
+    ExpectedVersionAction:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ExpectedVersionRequest'
   responses:
     Unauthenticated:
       description: Authentication is missing or invalid
@@ -366,8 +868,16 @@ components:
             $ref: '#/components/schemas/Problem'
     NotFound:
       description: Resource not found or not visible to this caller
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
     Conflict:
       description: Idempotency or lifecycle conflict
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
     ValidationProblem:
       description: Request could not be validated
       content:
@@ -380,9 +890,63 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+    CaseActionResult:
+      description: Updated case or exact idempotent replay
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CaseView'
   schemas:
     SubmitAdmissionRequest:
       $ref: ../schemas/student-admission.schema.json
+    CaseType:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/CaseType
+    CaseState:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/CaseState
+    PolicyAuthority:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/PolicyAuthority
+    CreateCaseRequest:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/CreateCaseRequest
+    CaseView:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/CaseView
+    CasePage:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/CasePage
+    ExpectedVersionRequest:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/ExpectedVersionRequest
+    SaveDraftRequest:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/SaveDraftRequest
+    AssignmentRequest:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/AssignmentRequest
+    ConflictDeclarationRequest:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/ConflictDeclarationRequest
+    InformationRequest:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/InformationRequest
+    InformationResponse:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/InformationResponse
+    RecommendationRequest:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/RecommendationRequest
+    DecisionRequest:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/DecisionRequest
+    CorrectionProposalRequest:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/CorrectionProposalRequest
+    EvidenceRequest:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/EvidenceRequest
+    PurposeRecordRequest:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/PurposeRecordRequest
+    AppealRequest:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/AppealRequest
+    AppealDecisionRequest:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/AppealDecisionRequest
+    CancellationImplementationRequest:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/CancellationImplementationRequest
+    TransferImplementationRequest:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/TransferImplementationRequest
+    ImplementationReceipt:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/ImplementationReceipt
+    HistoryPage:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/HistoryPage
+    PolicyVersionView:
+      $ref: ../schemas/admission-casework.schema.json#/$defs/PolicyVersionView
     CreateBatchRequest:
       type: object
       additionalProperties: false
@@ -626,7 +1190,29 @@ components:
             type: object
             required: [code, message]
             properties:
-              code: { type: string }
+              code:
+                anyOf:
+                  - $ref: '#/components/schemas/CaseworkProblemCode'
+                  - type: string
+                    pattern: '^[A-Z][A-Z0-9_]{1,99}$'
               field: { type: [string, 'null'] }
               row: { type: [integer, 'null'] }
               message: { type: string }
+    CaseworkProblemCode:
+      type: string
+      description: Stable machine-readable codes emitted by governed casework operations.
+      enum:
+        - ACTION_FORBIDDEN
+        - TENANT_SCOPE_DENIED
+        - CASE_TRANSITION_INVALID
+        - CASE_VERSION_CONFLICT
+        - IDEMPOTENCY_CONFLICT
+        - POLICY_AUTHORITY_REQUIRED
+        - CHECKER_MUST_DIFFER_FROM_MAKER
+        - CHECKER_MUST_DIFFER_FROM_REVIEWER
+        - REVIEWER_MUST_DIFFER_FROM_MAKER
+        - CONFLICT_OF_INTEREST
+        - CORRECTION_FIELD_UNSUPPORTED
+        - TARGET_CAPACITY_UNAVAILABLE
+        - IMPLEMENTATION_ALREADY_COMPLETED
+        - DEPENDENCY_UNAVAILABLE

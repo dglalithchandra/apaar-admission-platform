@@ -6,7 +6,7 @@ The product goal is not merely to collect a spreadsheet. It must make every admi
 
 ## Current status
 
-The foundation through Build Stage 3 is complete:
+The foundation through Build Stage 4 is complete:
 
 - authoritative public sources and local copies are indexed;
 - the current public APAAR verification contract is saved for adapter work;
@@ -19,7 +19,11 @@ The foundation through Build Stage 3 is complete:
 - a pinned `postgres:17.6-alpine` Testcontainers suite covers migrations, persistence, rollback, idempotency, scheme-specific counters and the concurrent last seat; all 11 integration tests pass against the real Linux PostgreSQL image.
 - product-owned CSV template 1.0, bounded streaming validation, digest/idempotency handling, malware and academic-identity simulator ports, resumable PostgreSQL row workers and row-derived reconciliation are implemented;
 - the real PostgreSQL batch journey covers repeatable migration over Stage 2, replay/conflict behavior, worker recovery and concurrency, immutable Stage 2 decision links, final-seat competition, audit/outbox atomicity and correction safety;
-- an exercised React/Vite institution workspace provides accessible template download, preflight upload, immutable receipt, reconciled totals, row filtering, explanations, correction export and valid retry actions using synthetic local data.
+- an exercised React/Vite institution workspace provides accessible template download, preflight upload, immutable receipt, reconciled totals, row filtering, explanations, correction export and valid retry actions using synthetic local data;
+- governed correction, cancellation, transfer and appeal casework is implemented with effective-dated policy, institution isolation, role boundaries, maker-reviewer-checker separation, serializable cancellation/transfer transactions and immutable implementation receipts;
+- OpenAPI `0.3.0-draft`, a strict casework schema, synthetic journey fixture, operations runbook and institution/reviewer/checker portal flows describe and exercise the Stage 4 boundary.
+
+Build Stage 4 completed locally on 26 October 2026. The final gate passed 56 casework unit tests with 100% measured coverage, 21/21 real `postgres:17.6-alpine` casework tests, 23/23 portal tests and every earlier Stage 2 and Stage 3 PostgreSQL suite. Browser acceptance passed at 390 × 844 and 1440 × 900, including keyboard-only access to Casework and the complete synthetic institution → reviewer → checker → implementation-receipt journey. The acceptance run found and fixed the hidden narrow-width navigation defect; browser console warnings and errors were empty after the repair.
 
 No real student data, credentials or official AICTE/APAAR branding are present.
 
@@ -36,6 +40,7 @@ No real student data, credentials or official AICTE/APAAR branding are present.
 9. [Delivery plan](docs/delivery/implementation-roadmap.md)
 10. [CSV template 1.0](docs/product/csv-template-v1.0.md)
 11. [Batch operations runbook](docs/operations/batch-ingestion-runbook.md)
+12. [Casework operations runbook](docs/operations/casework-operations-runbook.md)
 
 ## Repository map
 
@@ -60,7 +65,7 @@ No real student data, credentials or official AICTE/APAAR branding are present.
 
 Git, Node.js and npm are available on this machine. Docker Desktop uses its WSL 2 Linux engine, and the framework-independent TypeScript domain kernel, application-service tests and PostgreSQL Testcontainers suite run locally. See [local toolchain status](docs/delivery/local-toolchain-status.md).
 
-Use `npm run check` for formatting, linting, types, coverage, contracts and builds. Use `npm run test:integration:postgres` for the Stage 2 persistence suite and `npm run test:e2e:batch` for the Stage 3 real-PostgreSQL journey. The portal runs locally with `npm run dev -w @apaar-platform/institution-portal`.
+Use `npm run check` for formatting, linting, types, coverage, contracts and builds. Use `npm run test:integration:postgres` for the Stage 2 persistence suite, `npm run test:e2e:batch` for the Stage 3 real-PostgreSQL journey and `npm run test:e2e:casework` for the Stage 4 PostgreSQL governance suite. The portal runs locally with `npm run dev -w @apaar-platform/institution-portal`.
 
 ## Data safety
 

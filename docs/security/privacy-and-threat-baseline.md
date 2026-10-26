@@ -36,3 +36,12 @@ Logs contain request and record references, not full identifiers or uploaded row
 - Batch audit/outbox details contain receipt, digest, version and product references, not raw row payloads.
 - Retention periods for original objects, safe row values, identity references, findings, correction exports, attempts and audit records require AICTE legal, records-management and privacy approval. No deletion schedule is invented in Stage 3.
 - Correction files remain sensitive operational records even without direct identity values. Authorisation, download audit, time-limited object links and approved retention are production requirements.
+
+## Stage 4 casework controls
+
+- Institution-scoped reads deliberately return not found for records outside the caller's scope, reducing identifier enumeration.
+- Case commands require a declared purpose, reason, request reference, actor and correlation reference. Evidence APIs expose only scanned-object metadata; they do not return file bytes or raw identity payloads.
+- Maker, reviewer and checker separation plus conflict declarations are enforced in both application workflows and database guards. Auditors are read-only in the application authorization model.
+- Admission corrections, cancellations and transfers append versions; they never rewrite the original admission decision. Implementation receipts, reservation releases, audit events and outbox events are immutable and transactionally atomic.
+- Cancellation and transfer capabilities default to blocked. Only an active `SOURCE_CONFIRMED` or `AUTHORITY_CONFIGURED` policy version can enable a capability, and activation requires independent maker and checker references.
+- Case evidence, free text and exported audit views can still contain sensitive context. Production transport must add content scanning, field-level redaction, download authorization, retention enforcement and security monitoring before deployment.
