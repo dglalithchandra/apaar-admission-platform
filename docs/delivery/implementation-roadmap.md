@@ -56,6 +56,12 @@ The executable local baseline now includes hardened digest-pinned containers, se
 
 The baseline does not invent national scale or certification. Production SLO/load volumes, RTO/RPO, hosting controls, languages, formal penetration test, privacy impact assessment and assisted accessibility/user research require the accountable inputs recorded in the blocker register.
 
-## Stage 7 — controlled rollout
+## Stage 7A — controlled-rollout technical readiness (implemented locally)
 
-Pilot multiple institution types, measure task completion and data quality, reconcile every result, fix policy gaps, then expand by cohorts. A national launch is a migration programme, not a single deployment.
+The repository now provides immutable cohort configuration, institution/campus membership, effective windows, server-side capability flags, fail-closed kill switches, maker-checker activation, gated pause/resume/expansion/exit, synthetic legacy migration and correction receipts, tenant-safe observability, versioned contracts and institution/AICTE pilot views. PostgreSQL tests exercise concurrent activation, audit/outbox atomicity, membership isolation, migration replay/rollback and recovery after an atomic worker failure.
+
+This is a technical readiness package, not evidence of a real pilot. Live institutions, student data, provider credentials and policy/legal decisions remain blocked.
+
+## Stage 7B — authorised pilot execution (blocked pending authority)
+
+Obtain accountable approvals and protected inputs, select a small representative cohort, complete privacy/security review, train users, run production-like dress rehearsal, execute go/no-go, monitor agreed SLOs and data-quality measures, reconcile every result, pause on stop conditions and expand only after evidence-based review. A national launch remains a migration programme, not a single deployment.

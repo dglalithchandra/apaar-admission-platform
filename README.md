@@ -29,6 +29,8 @@ All locally executable Stage 5 engineering is complete. The gateway maps every r
 
 The Stage 6 local assurance baseline is implemented: digest-pinned hardened containers, safe configuration, identifier-free metrics, immutable security events, mixed-route k6 workload, backup/restore drill, licence inventory, CycloneDX SBOM, dependency/secret scanning and automated multi-role accessibility checks. This is strong local evidence, not a claim of national production certification. See the [Stage 6 assurance report](docs/assurance/stage-6-local-assurance.md).
 
+Stage 7A controlled-rollout readiness is implemented locally with immutable pilot configurations, tenant-scoped membership, effective windows, fail-closed capabilities and kill switches, maker-checker activation, readiness gates, synthetic migration/reconciliation receipts, pilot telemetry and accessible institution/AICTE pilot views. No real institution is activated and no real student data is used. See the [pilot operations runbook](docs/operations/pilot-operations-runbook.md).
+
 No real student data, credentials or official AICTE/APAAR branding are present.
 
 ## Read first
@@ -69,7 +71,7 @@ No real student data, credentials or official AICTE/APAAR branding are present.
 
 Git, Node.js and npm are available on this machine. Docker Desktop uses its WSL 2 Linux engine, and the framework-independent TypeScript domain kernel, application-service tests and PostgreSQL Testcontainers suite run locally. See [local toolchain status](docs/delivery/local-toolchain-status.md).
 
-Use `npm run check` for formatting, linting, types, coverage, contracts and builds. Use `npm run test:integration:postgres` for Stage 2, `npm run test:e2e:batch` for Stage 3, `npm run test:e2e:casework` for Stage 4 and `npm run test:e2e:gateway` for the integration boundary. Stage 6 adds `npm run test:container`, `npm run test:recovery`, `npm run security:scan`, `npm run security:licenses` and `npm run security:sbom`; the declared load workload runs against the local compose stack with `npm run load:smoke`. The portal runs locally with `npm run dev -w @apaar-platform/institution-portal`.
+Use `npm run check` for formatting, linting, types, coverage, contracts and builds. Use `npm run test:integration:postgres` for Stage 2, `npm run test:e2e:batch` for Stage 3, `npm run test:e2e:casework` for Stage 4, `npm run test:e2e:gateway` for the integration boundary and `npm run test:e2e:pilot` for Stage 7A. Stage 6 adds `npm run test:container`, `npm run test:recovery`, `npm run security:scan`, `npm run security:licenses` and `npm run security:sbom`; the declared load workload runs against the local compose stack with `npm run load:smoke`. The portal runs locally with `npm run dev -w @apaar-platform/institution-portal`.
 
 ## Data safety
 

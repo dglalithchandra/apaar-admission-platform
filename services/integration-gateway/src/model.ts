@@ -36,6 +36,11 @@ export type GatewayAction =
   | 'VERIFICATION_CREATE'
   | 'VERIFICATION_READ'
   | 'VERIFICATION_REVOKE'
+  | 'PILOT_READ'
+  | 'PILOT_INSTITUTION_READ'
+  | 'PILOT_MANAGE'
+  | 'PILOT_ACTIVATE'
+  | 'PILOT_MIGRATE'
   | 'AUDIT_READ';
 
 export class GatewayProblem extends Error {

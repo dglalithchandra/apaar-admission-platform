@@ -34,6 +34,8 @@ const institution = '(?<institutionId>[^/]+)';
 const batch = '(?<batchId>[^/]+)';
 const record = '(?<recordKey>[^/]+)';
 const caseId = '(?<caseId>[^/]+)';
+const pilot = '(?<pilotReference>[^/]+)';
+const migration = '(?<migrationReference>[^/]+)';
 
 export const DELEGATED_ROUTES: readonly DelegatedRoute[] = [
   route(
@@ -263,6 +265,81 @@ export const DELEGATED_ROUTES: readonly DelegatedRoute[] = [
   route('GET', '/v1/casework/reason-codes', 'listCaseworkReasonCodes', 'METADATA_READ', 200),
   route('GET', '/v1/casework/policies', 'listCaseworkPolicies', 'METADATA_READ', 200),
   route('GET', `/v1/cases/${caseId}/audit`, 'listAdmissionCaseAudit', 'AUDIT_READ', 200),
+  route('POST', '/v1/pilots', 'createPilotConfiguration', 'PILOT_MANAGE', 201, 'JSON', true),
+  route('GET', `/v1/pilots/${pilot}`, 'getPilotConfiguration', 'PILOT_READ', 200),
+  route(
+    'POST',
+    `/v1/pilots/${pilot}/readiness`,
+    'assessPilotReadiness',
+    'PILOT_MANAGE',
+    200,
+    'JSON',
+    true,
+  ),
+  route(
+    'POST',
+    `/v1/pilots/${pilot}/reconciliation`,
+    'reconcilePilot',
+    'PILOT_MANAGE',
+    200,
+    'JSON',
+    true,
+  ),
+  route(
+    'POST',
+    `/v1/pilots/${pilot}/activate`,
+    'activatePilot',
+    'PILOT_ACTIVATE',
+    200,
+    'JSON',
+    true,
+  ),
+  route('POST', `/v1/pilots/${pilot}/pause`, 'pausePilot', 'PILOT_MANAGE', 200, 'JSON', true),
+  route('POST', `/v1/pilots/${pilot}/resume`, 'resumePilot', 'PILOT_ACTIVATE', 200, 'JSON', true),
+  route('POST', `/v1/pilots/${pilot}/exit`, 'exitPilot', 'PILOT_ACTIVATE', 200, 'JSON', true),
+  route(
+    'POST',
+    `/v1/pilots/${pilot}/expand`,
+    'expandPilotCohort',
+    'PILOT_MANAGE',
+    200,
+    'JSON',
+    true,
+  ),
+  route(
+    'POST',
+    `/v1/pilots/${pilot}/kill-switches`,
+    'setPilotKillSwitches',
+    'PILOT_MANAGE',
+    200,
+    'JSON',
+    true,
+  ),
+  route(
+    'POST',
+    `/v1/pilots/${pilot}/migrations`,
+    'createPilotMigration',
+    'PILOT_MIGRATE',
+    201,
+    'JSON',
+    true,
+  ),
+  route(
+    'POST',
+    `/v1/pilot-migrations/${migration}/rollback`,
+    'rollbackPilotMigration',
+    'PILOT_MIGRATE',
+    200,
+    'JSON',
+    true,
+  ),
+  route(
+    'GET',
+    `/v1/institutions/${institution}/pilot-readiness`,
+    'getInstitutionPilotReadiness',
+    'PILOT_INSTITUTION_READ',
+    200,
+  ),
 ];
 
 const DELEGATED_STATUS_BY_OPERATION = new Map(

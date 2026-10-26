@@ -11,6 +11,8 @@ describe('automated accessibility smoke', () => {
     ['CASEWORK', 'AICTE_CHECKER'],
     ['INTEGRATIONS', 'AUDITOR'],
     ['INTEGRATIONS', 'AUTHORIZED_VERIFIER'],
+    ['PILOT', 'INSTITUTION_ADMINISTRATOR'],
+    ['PILOT', 'AICTE_CHECKER'],
   ] as const)('has no detectable violations in %s for %s', async (initialView, initialRole) => {
     const { container } = render(<App initialRole={initialRole} initialView={initialView} />);
     const result = await axe.run(container, { rules: { 'color-contrast': { enabled: false } } });

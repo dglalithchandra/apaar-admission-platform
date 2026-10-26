@@ -6,6 +6,7 @@ import {
   InMemoryAdmissionFacts,
   InMemoryApprovalManifestRepository,
   InMemoryNotificationRepository,
+  InMemoryPilotTelemetry,
   InMemoryVerificationReceiptRepository,
   NotificationWorker,
   OidcBearerAuthenticator,
@@ -79,6 +80,15 @@ describe('authentication, authorization and configuration', () => {
     expect(() => authorize(institution, 'CASE_CREATE', 'SYNTH-INSTITUTION-001')).not.toThrow();
     expect(() => authorize(institution, 'CASE_CREATE', 'SYNTH-INSTITUTION-002')).toThrow(
       expect.objectContaining({ code: 'TENANT_SCOPE_DENIED', status: 404 }),
+    );
+    expect(() =>
+      authorize(institution, 'PILOT_INSTITUTION_READ', 'SYNTH-INSTITUTION-001'),
+    ).not.toThrow();
+    expect(() => authorize(institution, 'PILOT_INSTITUTION_READ', 'SYNTH-INSTITUTION-002')).toThrow(
+      expect.objectContaining({ code: 'TENANT_SCOPE_DENIED', status: 404 }),
+    );
+    expect(() => authorize(institution, 'PILOT_READ')).toThrow(
+      expect.objectContaining({ code: 'ACTION_FORBIDDEN' }),
     );
     expect(() => authorize(institution, 'CASE_DECIDE')).toThrow(
       expect.objectContaining({ code: 'ACTION_FORBIDDEN' }),
@@ -541,5 +551,19 @@ describe('approval, notification and verification services', () => {
     await expect(status.get('SYNTH-VERIFICATION-MISSING')).rejects.toMatchObject({
       code: 'VERIFICATION_NOT_FOUND',
     });
+  });
+
+  it('emits pilot signals without institution or student identifiers', () => {
+    const telemetry = new InMemoryPilotTelemetry();
+    telemetry.record('SUBMISSION', 'SUCCESS');
+    telemetry.record('IDENTITY_PROVIDER', 'OUTAGE', 2);
+    telemetry.record('PROCESSING_LATENCY_MILLISECONDS', 'OBSERVED', 125.5);
+    const metrics = telemetry.prometheus();
+    expect(metrics).toContain('signal="SUBMISSION",outcome="SUCCESS"} 1');
+    expect(metrics).toContain('signal="IDENTITY_PROVIDER",outcome="OUTAGE"} 2');
+    expect(metrics).not.toContain('SYNTH-');
+    expect(() => telemetry.record('CASEWORK_BACKLOG', 'OBSERVED', -1)).toThrow(
+      'Pilot metric values must be finite and non-negative.',
+    );
   });
 });

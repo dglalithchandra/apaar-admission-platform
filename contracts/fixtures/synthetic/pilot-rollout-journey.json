@@ -1,0 +1,100 @@
+{
+  "configuration": {
+    "pilotReference": "SYNTH-PILOT-FIXTURE-001",
+    "cohortReference": "SYNTH-COHORT-FIXTURE-001",
+    "institutionId": "SYNTH-INSTITUTION-001",
+    "campusIds": ["SYNTH-CAMPUS-001"],
+    "effectiveFrom": "2026-10-01",
+    "effectiveTo": "2027-03-31",
+    "enabledCapabilities": ["BATCH_UPLOAD", "CASEWORK"],
+    "templateVersion": "1.0",
+    "apiVersion": "v1",
+    "maximumBatchRows": 10000,
+    "maximumDailySubmissions": 100,
+    "globalKillSwitch": false,
+    "institutionKillSwitch": false,
+    "makerReference": "SYNTH-PILOT-MAKER-001"
+  },
+  "readyAssessment": {
+    "configurationComplete": true,
+    "approvalDataAvailable": true,
+    "rolesReady": true,
+    "versionsCompatible": true,
+    "reconciliationDrift": 0,
+    "policyBlockers": [],
+    "dependencyReady": true,
+    "securityReady": true,
+    "recoveryReady": true
+  },
+  "blockedAssessment": {
+    "configurationComplete": true,
+    "approvalDataAvailable": false,
+    "rolesReady": true,
+    "versionsCompatible": true,
+    "reconciliationDrift": 1,
+    "policyBlockers": ["SYNTH-POLICY-BLOCKER-001"],
+    "dependencyReady": false,
+    "securityReady": true,
+    "recoveryReady": true
+  },
+  "reconciliation": {
+    "sourceRows": 120,
+    "acceptedRows": 118,
+    "rejectedRows": 2,
+    "unresolvedCorrections": 0
+  },
+  "migration": {
+    "mode": "DRY_RUN",
+    "rows": [
+      {
+        "schemaVersion": "1.0",
+        "recordKey": "SYNTH-LEGACY-ROW-001",
+        "studentReference": "SYNTH-STUDENT-001",
+        "academicIdentityReference": "SYNTH-IDENTITY-001",
+        "regulatoryReference": "SYNTH-APPROVAL-001"
+      }
+    ]
+  },
+  "scenario": {
+    "institutions": [
+      { "institutionId": "SYNTH-INSTITUTION-001", "readiness": "READY" },
+      { "institutionId": "SYNTH-INSTITUTION-002", "readiness": "BLOCKED" },
+      { "institutionId": "SYNTH-INSTITUTION-003", "readiness": "DEGRADED" }
+    ],
+    "journey": [
+      {
+        "sequence": 1,
+        "event": "DRY_RUN",
+        "state": "DRY_RUN_COMPLETED",
+        "reference": "SYNTH-MIGRATION-001"
+      },
+      {
+        "sequence": 2,
+        "event": "CORRECTION",
+        "state": "CORRECTED",
+        "reference": "SYNTH-CORRECTION-001"
+      },
+      {
+        "sequence": 3,
+        "event": "RECONCILIATION",
+        "state": "RECONCILED",
+        "reference": "SYNTH-RECONCILIATION-001"
+      },
+      {
+        "sequence": 4,
+        "event": "ACTIVATION",
+        "state": "ACTIVE",
+        "reference": "SYNTH-PILOT-EVENT-001"
+      },
+      {
+        "sequence": 5,
+        "event": "DEPENDENCY_DEGRADED",
+        "state": "DEGRADED",
+        "reference": "SYNTH-PILOT-EVENT-002"
+      },
+      { "sequence": 6, "event": "PAUSE", "state": "PAUSED", "reference": "SYNTH-PILOT-EVENT-003" },
+      { "sequence": 7, "event": "RESUME", "state": "ACTIVE", "reference": "SYNTH-PILOT-EVENT-004" },
+      { "sequence": 8, "event": "EXIT", "state": "EXITED", "reference": "SYNTH-PILOT-EVENT-005" }
+    ]
+  }
+}

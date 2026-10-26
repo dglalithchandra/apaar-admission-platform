@@ -1,6 +1,8 @@
 # Observability and incident signals
 
-The gateway emits Prometheus text at auditor-only `GET /metrics`. Labels are limited to method, normalized route and status. Dynamic path segments become `:reference`; query strings, bodies, tokens, APAAR values and student/institution identifiers are never labels.
+The gateway emits Prometheus text at auditor-only `GET /metrics`. Labels are limited to method, normalized route and status. Dynamic path segments, including pilot and migration references, become `:reference`; query strings, bodies, tokens, APAAR values and student/institution identifiers are never labels.
+
+Stage 7A also defines low-cardinality pilot signals for submission outcome, validation/rejection trend, identity-provider pending/outage, processing latency, reconciliation drift, notification dead letter, casework backlog and capacity anomaly. Signal and outcome are the only metric labels. Institution-scoped dashboards enforce tenant scope at the authorised query layer rather than placing institution IDs in time-series labels.
 
 Recommended initial signals are request rate, error ratio, latency percentiles, readiness state, provider circuit state, approval-import rejection, notification retry/dead-letter count, case-version conflicts, serialization retries, capacity rejection and outbox lag. Only the first three are implemented as local gateway counters; production exporters and alerts require the selected hosting stack.
 

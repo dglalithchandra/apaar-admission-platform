@@ -6,6 +6,7 @@ import { DemoIntegrationClient } from './demo-integration-client.js';
 import { DemoPortalClient } from './demo-client.js';
 import { IntegrationWorkspace } from './IntegrationWorkspace.js';
 import type { IntegrationClient } from './integration-types.js';
+import { PilotWorkspace } from './PilotWorkspace.js';
 import type { PortalBatch, PortalClient, PortalRow, RowStatus } from './types.js';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -100,7 +101,7 @@ export function App({
   readonly caseworkClient?: CaseworkClient;
   readonly integrationClient?: IntegrationClient;
   readonly initialRole?: PreviewRole;
-  readonly initialView?: 'BATCH' | 'CASEWORK' | 'INTEGRATIONS';
+  readonly initialView?: 'BATCH' | 'CASEWORK' | 'INTEGRATIONS' | 'PILOT';
 }): JSX.Element {
   const batchClient = useMemo(() => client ?? new DemoPortalClient(), [client]);
   const governedCaseworkClient = useMemo(
@@ -111,7 +112,7 @@ export function App({
     () => integrationClient ?? new DemoIntegrationClient(),
     [integrationClient],
   );
-  const [view, setView] = useState<'BATCH' | 'CASEWORK' | 'INTEGRATIONS'>(initialView);
+  const [view, setView] = useState<'BATCH' | 'CASEWORK' | 'INTEGRATIONS' | 'PILOT'>(initialView);
   const [role, setRole] = useState<PreviewRole>(initialRole);
   const caseworkRole: CaseworkRole | null =
     role === 'INSTITUTION_ADMINISTRATOR'
@@ -259,6 +260,15 @@ export function App({
           >
             Integration assurance
           </button>
+          <button
+            aria-current={view === 'PILOT' ? 'page' : undefined}
+            onClick={() => {
+              setView('PILOT');
+            }}
+            type="button"
+          >
+            Pilot readiness
+          </button>
           <div className="support-note">
             <strong>Need help?</strong>
             <span>Keep the receipt reference when contacting support.</span>
@@ -276,6 +286,16 @@ export function App({
             )
           ) : view === 'INTEGRATIONS' ? (
             <IntegrationWorkspace client={governedIntegrationClient} />
+          ) : view === 'PILOT' ? (
+            <PilotWorkspace
+              mode={
+                role === 'INSTITUTION_OPERATOR' || role === 'INSTITUTION_ADMINISTRATOR'
+                  ? 'INSTITUTION'
+                  : role === 'AICTE_REVIEWER' || role === 'AICTE_CHECKER' || role === 'AUDITOR'
+                    ? 'AICTE'
+                    : 'UNAVAILABLE'
+              }
+            />
           ) : (
             <>
               <div className="page-heading">

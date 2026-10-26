@@ -100,6 +100,7 @@ describe('Stage 5 PostgreSQL integration foundation', () => {
       '0003_admission_casework_governance.sql',
       '0004_authenticated_integrations.sql',
       '0005_operational_assurance.sql',
+      '0006_controlled_pilot_rollout.sql',
     ]);
     for (const directory of migrationDirectories)
       await expect(migrate(pool, directory)).resolves.toEqual([]);

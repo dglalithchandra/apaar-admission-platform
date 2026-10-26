@@ -913,6 +913,230 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilots:
+    post:
+      operationId: createPilotConfiguration
+      summary: Create or revise a synthetic controlled-rollout configuration
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PilotConfigurationInput' }
+      responses:
+        '201':
+          description: Immutable pilot configuration version
+          content:
+            { application/json: { schema: { $ref: '#/components/schemas/PilotConfiguration' } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilots/{pilotReference}:
+    get:
+      operationId: getPilotConfiguration
+      summary: Read the latest visible pilot configuration
+      parameters: [{ $ref: '#/components/parameters/PilotReference' }]
+      responses:
+        '200':
+          description: Latest configuration
+          content:
+            { application/json: { schema: { $ref: '#/components/schemas/PilotConfiguration' } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/pilots/{pilotReference}/readiness:
+    post:
+      operationId: assessPilotReadiness
+      summary: Append a deterministic pilot readiness assessment
+      parameters:
+        - $ref: '#/components/parameters/PilotReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          { application/json: { schema: { $ref: '#/components/schemas/PilotReadinessInput' } } }
+      responses:
+        '200':
+          description: Readiness assessment
+          content:
+            {
+              application/json:
+                { schema: { $ref: '#/components/schemas/PilotReadinessAssessment' } },
+            }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilots/{pilotReference}/activate:
+    post:
+      operationId: activatePilot
+      summary: Activate a ready pilot after independent checker approval
+      parameters:
+        - $ref: '#/components/parameters/PilotReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/PilotTransition' }
+      responses:
+        {
+          '200': { $ref: '#/components/responses/PilotChanged' },
+          '409': { $ref: '#/components/responses/Conflict' },
+        }
+  /v1/pilots/{pilotReference}/reconciliation:
+    post:
+      operationId: reconcilePilot
+      summary: Append deterministic source-to-platform reconciliation
+      parameters:
+        - $ref: '#/components/parameters/PilotReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PilotReconciliationInput' }
+      responses:
+        '200':
+          description: Immutable reconciliation result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PilotReconciliation' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilots/{pilotReference}/pause:
+    post:
+      operationId: pausePilot
+      summary: Pause pilot exposure without changing accepted records
+      parameters:
+        - $ref: '#/components/parameters/PilotReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/PilotTransition' }
+      responses:
+        {
+          '200': { $ref: '#/components/responses/PilotChanged' },
+          '409': { $ref: '#/components/responses/Conflict' },
+        }
+  /v1/pilots/{pilotReference}/resume:
+    post:
+      operationId: resumePilot
+      summary: Resume a paused pilot after gates are rechecked
+      parameters:
+        - $ref: '#/components/parameters/PilotReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/PilotTransition' }
+      responses:
+        {
+          '200': { $ref: '#/components/responses/PilotChanged' },
+          '409': { $ref: '#/components/responses/Conflict' },
+        }
+  /v1/pilots/{pilotReference}/exit:
+    post:
+      operationId: exitPilot
+      summary: Exit a reconciled pilot cohort
+      parameters:
+        - $ref: '#/components/parameters/PilotReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/PilotTransition' }
+      responses:
+        {
+          '200': { $ref: '#/components/responses/PilotChanged' },
+          '409': { $ref: '#/components/responses/Conflict' },
+        }
+  /v1/pilots/{pilotReference}/expand:
+    post:
+      operationId: expandPilotCohort
+      summary: Propose additional campuses while paused and return to rollout gates
+      parameters:
+        - $ref: '#/components/parameters/PilotReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedVersion, campusIds, reason, requestReference]
+              properties:
+                expectedVersion: { type: integer, minimum: 1 }
+                campusIds:
+                  type: array
+                  minItems: 1
+                  uniqueItems: true
+                  items: { type: string, pattern: '^SYNTH-[A-Z0-9-]+$' }
+                reason: { type: string, minLength: 1, maxLength: 500 }
+                requestReference: { type: string, pattern: '^SYNTH-[A-Z0-9-]+$' }
+      responses:
+        '200': { $ref: '#/components/responses/PilotChanged' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilots/{pilotReference}/kill-switches:
+    post:
+      operationId: setPilotKillSwitches
+      summary: Change fail-closed pilot kill switches and incident state
+      parameters:
+        - $ref: '#/components/parameters/PilotReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                [expectedVersion, globalKillSwitch, institutionKillSwitch, reason, requestReference]
+              properties:
+                expectedVersion: { type: integer, minimum: 1 }
+                globalKillSwitch: { type: boolean }
+                institutionKillSwitch: { type: boolean }
+                reason: { type: string, minLength: 1, maxLength: 500 }
+                requestReference: { type: string, pattern: '^SYNTH-[A-Z0-9-]+$' }
+      responses:
+        '200': { $ref: '#/components/responses/PilotChanged' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilots/{pilotReference}/migrations:
+    post:
+      operationId: createPilotMigration
+      summary: Dry-run or stage a synthetic legacy migration
+      parameters:
+        - $ref: '#/components/parameters/PilotReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          { application/json: { schema: { $ref: '#/components/schemas/PilotMigrationInput' } } }
+      responses:
+        '201':
+          description: Immutable migration receipt
+          content:
+            { application/json: { schema: { $ref: '#/components/schemas/PilotMigrationReceipt' } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilot-migrations/{migrationReference}/rollback:
+    post:
+      operationId: rollbackPilotMigration
+      summary: Append rollback state before pilot activation
+      parameters:
+        - name: migrationReference
+          in: path
+          required: true
+          schema: { type: string, pattern: '^SYNTH-[A-Z0-9-]+$' }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/PilotTransition' }
+      responses:
+        '200':
+          description: Rolled-back migration receipt
+          content:
+            { application/json: { schema: { $ref: '#/components/schemas/PilotMigrationReceipt' } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /v1/institutions/{institutionId}/pilot-readiness:
+    get:
+      operationId: getInstitutionPilotReadiness
+      summary: Read tenant-scoped onboarding and rollout readiness
+      parameters: [{ $ref: '#/components/parameters/InstitutionId' }]
+      responses:
+        '200':
+          description: Latest institution pilot readiness
+          content:
+            {
+              application/json:
+                { schema: { $ref: '#/components/schemas/PilotReadinessAssessment' } },
+            }
+        '404': { $ref: '#/components/responses/NotFound' }
 components:
   securitySchemes:
     oauth2:
@@ -923,6 +1147,11 @@ components:
           tokenUrl: https://identity.example.invalid/token
           scopes: {}
   parameters:
+    PilotReference:
+      name: pilotReference
+      in: path
+      required: true
+      schema: { type: string, pattern: '^SYNTH-[A-Z0-9-]+$' }
     InstitutionId:
       name: institutionId
       in: path
@@ -970,6 +1199,19 @@ components:
       in: query
       schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
   requestBodies:
+    PilotTransition:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [expectedVersion, reason, requestReference]
+            properties:
+              expectedVersion: { type: integer, minimum: 1 }
+              reconciliationDrift: { type: integer, minimum: 0, default: 0 }
+              reason: { type: string, minLength: 1, maxLength: 500 }
+              requestReference: { type: string, pattern: '^SYNTH-[A-Z0-9-]+$' }
     ExpectedVersionAction:
       required: true
       content:
@@ -977,6 +1219,11 @@ components:
           schema:
             $ref: '#/components/schemas/ExpectedVersionRequest'
   responses:
+    PilotChanged:
+      description: Pilot state changed or exact idempotent replay
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/PilotConfiguration' }
     Unauthenticated:
       description: Authentication is missing or invalid
       content:
@@ -1020,6 +1267,22 @@ components:
           schema:
             $ref: '#/components/schemas/CaseView'
   schemas:
+    PilotConfigurationInput:
+      $ref: ../schemas/pilot-rollout.schema.json#/$defs/PilotConfigurationInput
+    PilotConfiguration:
+      $ref: ../schemas/pilot-rollout.schema.json#/$defs/PilotConfiguration
+    PilotReadinessInput:
+      $ref: ../schemas/pilot-rollout.schema.json#/$defs/PilotReadinessInput
+    PilotReadinessAssessment:
+      $ref: ../schemas/pilot-rollout.schema.json#/$defs/PilotReadinessAssessment
+    PilotReconciliationInput:
+      $ref: ../schemas/pilot-rollout.schema.json#/$defs/PilotReconciliationInput
+    PilotReconciliation:
+      $ref: ../schemas/pilot-rollout.schema.json#/$defs/PilotReconciliation
+    PilotMigrationInput:
+      $ref: ../schemas/pilot-rollout.schema.json#/$defs/PilotMigrationInput
+    PilotMigrationReceipt:
+      $ref: ../schemas/pilot-rollout.schema.json#/$defs/PilotMigrationReceipt
     VerificationReceipt:
       type: object
       additionalProperties: false

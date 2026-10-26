@@ -8,6 +8,7 @@ const paths = [
   'contracts/schemas/student-admission.schema.json',
   'contracts/schemas/batch-admission-row.schema.json',
   'contracts/schemas/admission-casework.schema.json',
+  'contracts/schemas/pilot-rollout.schema.json',
 ];
 const schemas: unknown[] = [];
 for (const path of paths) {
@@ -38,6 +39,27 @@ for (const [fixtureName, definition] of Object.entries(fixtureDefinitions)) {
   if (validate === undefined || !validate(caseworkFixture[fixtureName])) {
     throw new Error(
       `Synthetic casework fixture ${fixtureName} is invalid: ${JSON.stringify(validate?.errors)}`,
+    );
+  }
+}
+
+const pilotFixture = JSON.parse(
+  await readFile('contracts/fixtures/synthetic/pilot-rollout-journey.json', 'utf8'),
+) as Record<string, unknown>;
+for (const [fixtureName, definition] of Object.entries({
+  blockedAssessment: 'PilotReadinessInput',
+  configuration: 'PilotConfigurationInput',
+  migration: 'PilotMigrationInput',
+  readyAssessment: 'PilotReadinessInput',
+  reconciliation: 'PilotReconciliationInput',
+  scenario: 'SyntheticPilotScenario',
+})) {
+  const validate = ajv.getSchema(
+    `https://example.invalid/schemas/pilot-rollout.schema.json#/$defs/${definition}`,
+  );
+  if (validate === undefined || !validate(pilotFixture[fixtureName])) {
+    throw new Error(
+      `Synthetic pilot fixture ${fixtureName} is invalid: ${JSON.stringify(validate?.errors)}`,
     );
   }
 }

@@ -14,9 +14,12 @@ Implemented and locally verifiable:
 - minimal, expiring, revocable verification receipts and a visibly synthetic signing adapter;
 - migrations `0004_authenticated_integrations.sql` and `0005_operational_assurance.sql` plus real digest-pinned PostgreSQL 17.6 tests;
 - complete recorded OpenAPI operation inventory, response-status enforcement, security events and auditor-only Prometheus metrics.
+- controlled-pilot configuration, server-side fail-closed capabilities, readiness gates, maker-checker activation, kill switches, synthetic legacy migration and immutable PostgreSQL rollout history.
 
 Purpose-limited verification uses the `Idempotency-Key` request header defined by the OpenAPI contract. Approval imports use their manifest `importReference` plus content digest as the replay key; an authoritative overlap is accepted only when it explicitly names the one active import it supersedes.
 
 Live APAAR, AICTE approval feed, OIDC, notification and signing integrations remain disabled until the external blocker register is satisfied.
 
 Run `npm run test:e2e:gateway` for the pinned PostgreSQL suite. Run `npm run test:container` for the hardened runtime smoke test. See the integration runbook and Stage 6 assurance report for load, recovery and operational commands.
+
+Run `npm run test:e2e:pilot` for the isolated Stage 7A PostgreSQL suite. These controls remain synthetic and do not activate real institutions.

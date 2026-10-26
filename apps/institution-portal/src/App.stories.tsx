@@ -77,3 +77,23 @@ export const IntegrationAssurance: Story = {
     ).toBeVisible();
   },
 };
+
+export const InstitutionPilotReadiness: Story = {
+  args: { initialRole: 'INSTITUTION_ADMINISTRATOR', initialView: 'PILOT' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('heading', { name: 'Institution onboarding' })).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'Preview blocked' }));
+    await expect(canvas.getByText('Activation blocked')).toBeVisible();
+  },
+};
+
+export const AictePilotManagement: Story = {
+  args: { initialRole: 'AICTE_CHECKER', initialView: 'PILOT' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('heading', { name: 'Pilot cohort management' })).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'Preview active' }));
+    await expect(canvas.getByText('Pilot active')).toBeVisible();
+  },
+};
