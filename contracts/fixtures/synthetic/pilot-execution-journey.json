@@ -1,0 +1,216 @@
+{
+  "execution": {
+    "executionReference": "SYNTH-EXECUTION-FIXTURE-001",
+    "pilotReference": "SYNTH-PILOT-FIXTURE-001",
+    "pilotVersion": 3,
+    "cohortReference": "SYNTH-COHORT-FIXTURE-001",
+    "scheduledStart": "2026-10-26T00:00:00.000Z",
+    "scheduledEnd": "2026-11-26T00:00:00.000Z",
+    "operationalOwnerReferences": ["SYNTH-OWNER-OPERATIONS-001", "SYNTH-OWNER-INCIDENT-001"],
+    "makerReference": "SYNTH-EXECUTION-MAKER-001"
+  },
+  "goNoGo": {
+    "configurationReady": true,
+    "membershipValid": true,
+    "approvalDataFresh": true,
+    "migrationReconciled": true,
+    "policyBlockersResolved": true,
+    "identityProviderReady": true,
+    "authenticationAndRolesReady": true,
+    "securityReady": true,
+    "backupAndRecoveryReady": true,
+    "incidentOwnershipReady": true,
+    "supportReady": true,
+    "accessibilityReady": true,
+    "trainingComplete": true,
+    "observabilityAndAlertsReady": true,
+    "rollbackReady": true,
+    "syntheticExecutionApproved": true,
+    "productionAuthorityGranted": null
+  },
+  "scenario": {
+    "institutions": [
+      {
+        "executionReference": "SYNTH-EXECUTION-FIXTURE-001",
+        "institutionId": "SYNTH-INSTITUTION-001",
+        "campusIds": ["SYNTH-CAMPUS-001", "SYNTH-CAMPUS-002"],
+        "readiness": "READY",
+        "approvalDataFresh": true,
+        "identityDependency": "READY"
+      },
+      {
+        "executionReference": "SYNTH-EXECUTION-FIXTURE-001",
+        "institutionId": "SYNTH-INSTITUTION-002",
+        "campusIds": ["SYNTH-CAMPUS-003"],
+        "readiness": "BLOCKED",
+        "approvalDataFresh": false,
+        "identityDependency": "READY"
+      },
+      {
+        "executionReference": "SYNTH-EXECUTION-FIXTURE-001",
+        "institutionId": "SYNTH-INSTITUTION-003",
+        "campusIds": ["SYNTH-CAMPUS-004"],
+        "readiness": "DEGRADED",
+        "approvalDataFresh": true,
+        "identityDependency": "DEGRADED"
+      },
+      {
+        "executionReference": "SYNTH-EXECUTION-FIXTURE-001",
+        "institutionId": "SYNTH-INSTITUTION-004",
+        "campusIds": ["SYNTH-CAMPUS-005"],
+        "readiness": "PAUSED",
+        "approvalDataFresh": true,
+        "identityDependency": "READY"
+      }
+    ],
+    "events": [
+      {
+        "sequence": 1,
+        "event": "LEGACY_MIGRATION",
+        "state": "RECONCILED",
+        "reference": "SYNTH-MIGRATION-001"
+      },
+      {
+        "sequence": 2,
+        "event": "CORRECTION_REJECTED",
+        "state": "OPEN",
+        "reference": "SYNTH-CORRECTION-001"
+      },
+      {
+        "sequence": 3,
+        "event": "CORRECTION_RESOLVED",
+        "state": "RESOLVED",
+        "reference": "SYNTH-CORRECTION-001"
+      },
+      {
+        "sequence": 4,
+        "event": "GO_LIVE_APPROVED",
+        "state": "APPROVED",
+        "reference": "SYNTH-ASSESSMENT-001"
+      },
+      {
+        "sequence": 5,
+        "event": "EXECUTION_STARTED",
+        "state": "RUNNING",
+        "reference": "SYNTH-EXECUTION-EVENT-001"
+      },
+      {
+        "sequence": 6,
+        "event": "SUBMISSIONS_MONITORED",
+        "state": "RUNNING",
+        "reference": "SYNTH-EVIDENCE-001"
+      },
+      {
+        "sequence": 7,
+        "event": "PROVIDER_OUTAGE",
+        "state": "PENDING",
+        "reference": "SYNTH-INCIDENT-001"
+      },
+      {
+        "sequence": 8,
+        "event": "SAFE_PAUSE",
+        "state": "INCIDENT",
+        "reference": "SYNTH-EXECUTION-EVENT-002"
+      },
+      {
+        "sequence": 9,
+        "event": "RECOVERY_VALIDATED",
+        "state": "RECOVERING",
+        "reference": "SYNTH-RECOVERY-001"
+      },
+      {
+        "sequence": 10,
+        "event": "SAFE_RESUME",
+        "state": "RUNNING",
+        "reference": "SYNTH-EXECUTION-EVENT-003"
+      },
+      {
+        "sequence": 11,
+        "event": "COHORT_EXPANDED",
+        "state": "PLANNED",
+        "reference": "SYNTH-EXPANSION-001"
+      },
+      {
+        "sequence": 12,
+        "event": "FINAL_RECONCILIATION",
+        "state": "RECONCILED",
+        "reference": "SYNTH-RECONCILIATION-001"
+      },
+      {
+        "sequence": 13,
+        "event": "EXECUTION_COMPLETED",
+        "state": "COMPLETED",
+        "reference": "SYNTH-REPORT-001"
+      }
+    ]
+  },
+  "incident": {
+    "expectedVersion": 4,
+    "incidentReference": "SYNTH-INCIDENT-FIXTURE-001",
+    "severity": "SEV2",
+    "affectedCapabilities": ["BATCH_UPLOAD"],
+    "stopAction": "AUTOMATIC",
+    "ownerReference": "SYNTH-OWNER-INCIDENT-001",
+    "evidenceReferences": ["SYNTH-EVIDENCE-OUTAGE-001"]
+  },
+  "worker": {
+    "jobReference": "SYNTH-WORK-FIXTURE-001",
+    "executionReference": "SYNTH-EXECUTION-FIXTURE-001",
+    "type": "SUBMISSION_MONITORING",
+    "state": "RETRYABLE",
+    "checkpoint": { "cursor": 100, "identityState": "PENDING" },
+    "attemptCount": 1,
+    "maximumAttempts": 3,
+    "batchLimit": 100,
+    "availableAt": "2026-10-26T12:01:00.000Z",
+    "institutionId": "SYNTH-INSTITUTION-003"
+  },
+  "evidence": {
+    "evidenceReference": "SYNTH-EVIDENCE-FIXTURE-001",
+    "executionReference": "SYNTH-EXECUTION-FIXTURE-001",
+    "institutionId": "SYNTH-INSTITUTION-001",
+    "capturedAt": "2026-10-26T12:00:00.000Z",
+    "onboardingCompletionRate": 1,
+    "taskCompletionRate": 0.98,
+    "submissionSuccessRate": 0.97,
+    "rejectionRate": 0.03,
+    "validationRuleTrends": { "ADMISSION_ACCEPTED": 97, "ADMISSION_REJECTED": 3 },
+    "identityPendingRate": 0.02,
+    "identityOutageRate": 0.01,
+    "processingLatencyP95Ms": 240,
+    "migrationDrift": 0,
+    "notificationDeadLetters": 0,
+    "caseworkBacklog": 2,
+    "caseworkOldestAgeHours": 4,
+    "capacityAnomalies": 0,
+    "accessibilityFindings": 0,
+    "incidentCount": 1,
+    "recoveryDurationMinutes": 18
+  },
+  "expansion": {
+    "expectedVersion": 6,
+    "expansionReference": "SYNTH-EXPANSION-FIXTURE-001",
+    "newPilotVersion": 4,
+    "institutionIds": ["SYNTH-INSTITUTION-005"],
+    "campusIds": ["SYNTH-CAMPUS-006"],
+    "proposalMakerReference": "SYNTH-EXPANSION-MAKER-001",
+    "checkerReference": "SYNTH-EXPANSION-CHECKER-001",
+    "readinessPassed": true,
+    "dryRunPassed": true,
+    "reconciliationDrift": 0
+  },
+  "completion": {
+    "expectedVersion": 8,
+    "source": 100,
+    "terminationRecommended": false,
+    "accepted": 97,
+    "rejected": 2,
+    "pending": 0,
+    "casework": 1,
+    "workersDrained": true,
+    "capacityCountersValid": true,
+    "auditOutboxConsistent": true,
+    "unresolvedIncidents": 0,
+    "policyBlockers": 1
+  }
+}

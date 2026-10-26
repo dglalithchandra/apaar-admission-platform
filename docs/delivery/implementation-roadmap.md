@@ -62,6 +62,10 @@ The repository now provides immutable cohort configuration, institution/campus m
 
 This is a technical readiness package, not evidence of a real pilot. Live institutions, student data, provider credentials and policy/legal decisions remain blocked.
 
-## Stage 7B — authorised pilot execution (blocked pending authority)
+## Stage 7B — synthetic pilot execution control plane (local engineering complete)
 
-Obtain accountable approvals and protected inputs, select a small representative cohort, complete privacy/security review, train users, run production-like dress rehearsal, execute go/no-go, monitor agreed SLOs and data-quality measures, reconcile every result, pause on stop conditions and expand only after evidence-based review. A national launch remains a migration programme, not a single deployment.
+The repository now executes a production-shaped synthetic dress rehearsal with immutable execution versions, deterministic go/no-go, maker-checker approval, stop controls, durable workers, incident/recovery, tenant-safe evidence, controlled expansion and atomic completion reports. The multi-institution fixture includes ready, blocked, degraded and paused participation. Production authority remains `MANUAL_REVIEW`, and all real connections remain disabled.
+
+## Stage 7C — authorised supervised pilot (blocked pending authority)
+
+Obtain accountable approvals and protected inputs, select a representative real cohort, complete privacy/security review, validate production SLOs and run the approved supervised pilot. Reconcile every result, pause on stop conditions and expand only after authority review. A national launch remains a migration programme, not a single deployment.

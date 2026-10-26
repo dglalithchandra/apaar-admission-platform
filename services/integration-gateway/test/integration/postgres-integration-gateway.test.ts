@@ -90,7 +90,7 @@ beforeEach(async () => {
 });
 
 describe('Stage 5 PostgreSQL integration foundation', () => {
-  it('migrates all four stages on an empty database and repeats without changing checksums', async () => {
+  it('migrates all platform stages on an empty database and repeats without changing checksums', async () => {
     const applied = await pool.query<{ version: string }>(
       'SELECT version FROM schema_migrations ORDER BY version',
     );
@@ -101,6 +101,7 @@ describe('Stage 5 PostgreSQL integration foundation', () => {
       '0004_authenticated_integrations.sql',
       '0005_operational_assurance.sql',
       '0006_controlled_pilot_rollout.sql',
+      '0007_synthetic_pilot_execution.sql',
     ]);
     for (const directory of migrationDirectories)
       await expect(migrate(pool, directory)).resolves.toEqual([]);

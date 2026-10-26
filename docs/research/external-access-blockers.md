@@ -22,6 +22,8 @@ The former local container-runtime blocker is resolved. Docker Desktop 4.96.3 no
 
 The Stage 5 local gateway does not resolve these authority gates. It proves the adapter, authorization, outage and persistence behavior while keeping live modes disabled. Required production inputs remain: official operation contracts and schemas; organisation-approved credentials in a secrets manager; OIDC issuer/JWKS/audience and claims mapping; authoritative approval-feed signature/profile; notification sender/template approval; and signing issuer/HSM/KMS/revocation policy.
 
+Stage 7B completes the synthetic execution mechanics but does not reduce these authority requirements. `PRODUCTION_AUTHORITY_GRANTED` remains `MANUAL_REVIEW`; there is no real-institution membership, production identity adapter, legal-basis approval, named real operational owner or authorised rollout decision in the repository.
+
 ## Inputs that must never be pasted into chat or committed
 
 Real APAAR/Aadhaar values, names with dates of birth, mobile numbers, emails, production tokens, client secrets, private certificates, HSM material and unredacted institutional exports.

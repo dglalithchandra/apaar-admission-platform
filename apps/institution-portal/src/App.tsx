@@ -267,7 +267,7 @@ export function App({
             }}
             type="button"
           >
-            Pilot readiness
+            Pilot execution
           </button>
           <div className="support-note">
             <strong>Need help?</strong>

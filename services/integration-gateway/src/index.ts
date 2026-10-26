@@ -9,6 +9,8 @@ export * from './model.js';
 export * from './notifications.js';
 export * from './observability.js';
 export * from './pilot-postgres.js';
+export * from './pilot-execution.js';
+export * from './pilot-execution-postgres.js';
 export * from './pilot-rollout.js';
 export * from './postgres-store.js';
 export * from './routes.js';

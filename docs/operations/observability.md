@@ -4,6 +4,8 @@ The gateway emits Prometheus text at auditor-only `GET /metrics`. Labels are lim
 
 Stage 7A also defines low-cardinality pilot signals for submission outcome, validation/rejection trend, identity-provider pending/outage, processing latency, reconciliation drift, notification dead letter, casework backlog and capacity anomaly. Signal and outcome are the only metric labels. Institution-scoped dashboards enforce tenant scope at the authorised query layer rather than placing institution IDs in time-series labels.
 
+Stage 7B adds execution state, go/no-go blockers, worker lease expiry/takeover, retry/dead-letter, stop-control activation, incident count, recovery duration, expansion gate and exit-classification signals. Allowed labels are bounded technical classes such as state, outcome, severity, work type and problem code. Execution, cohort, institution, campus, APAAR, student and admission references are forbidden labels; detailed evidence is queried through role and tenant scope.
+
 Recommended initial signals are request rate, error ratio, latency percentiles, readiness state, provider circuit state, approval-import rejection, notification retry/dead-letter count, case-version conflicts, serialization retries, capacity rejection and outbox lag. Only the first three are implemented as local gateway counters; production exporters and alerts require the selected hosting stack.
 
 Proposed alerts must be calibrated with real baselines. Immediate pages should cover authorization leakage, signature verification failure, inability to reserve/release capacity atomically, database unavailability and audit/outbox write failure. Ticket-level alerts can cover sustained latency, provider degradation, notification dead letters and reconciliation drift.

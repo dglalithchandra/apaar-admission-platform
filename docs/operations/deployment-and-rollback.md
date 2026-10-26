@@ -28,3 +28,9 @@ Migrations are additive and ordered. Take and verify a restorable backup before 
 Stop rollout immediately for authorization leakage, signature failure, capacity-counter drift, audit/outbox atomicity failure or migration inconsistency. Preserve audit evidence and correlation references; never copy student payloads into an incident channel.
 
 For a controlled pilot, enable the global or institution kill switch before diagnosis. Pausing preserves accepted records. Cohort expansion is a new draft and must repeat readiness plus maker-checker activation. Pilot migration rollback is append-only and available only before activation; see the pilot operations and migration runbooks.
+
+## Stage 7B execution controls
+
+Apply additive migration `0007_synthetic_pilot_execution.sql` after `0006`. Before deployment, pause synthetic execution exposure, drain or allow worker leases to expire, and retain current checkpoints. Deploy the compatible application and run the migration repeatability check before re-enabling workers.
+
+Rollback uses a forward compensating release or verified database restore. Do not drop immutable execution, command, incident, receipt, evidence or completion tables. If the application must roll back while the additive schema remains, keep new execution capabilities disabled and preserve every recorded version.

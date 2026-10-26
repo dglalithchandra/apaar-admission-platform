@@ -100,11 +100,11 @@ beforeEach(async () => {
 });
 
 describe('Stage 7 controlled rollout PostgreSQL', () => {
-  it('migrates all six versions repeatably', async () => {
+  it('migrates all controlled-rollout versions repeatably', async () => {
     const applied = await pool.query<{ version: string }>(
       'SELECT version FROM schema_migrations ORDER BY version',
     );
-    expect(applied.rows.at(-1)?.version).toBe('0006_controlled_pilot_rollout.sql');
+    expect(applied.rows.at(-1)?.version).toBe('0007_synthetic_pilot_execution.sql');
     for (const directory of migrationDirectories)
       await expect(migrate(pool, directory)).resolves.toEqual([]);
   });

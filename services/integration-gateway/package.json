@@ -23,6 +23,7 @@
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:pilot": "vitest run --config vitest.pilot.config.ts",
+    "test:execution": "vitest run --config vitest.execution.config.ts",
     "typecheck": "tsc -p tsconfig.lint.json --noEmit"
   },
   "dependencies": {

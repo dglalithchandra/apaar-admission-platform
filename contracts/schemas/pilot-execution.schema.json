@@ -1,0 +1,439 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/pilot-execution.schema.json",
+  "$defs": {
+    "SyntheticReference": { "type": "string", "pattern": "^SYNTH-[A-Z0-9-]+$" },
+    "ExecutionState": {
+      "enum": [
+        "PLANNED",
+        "GO_LIVE_REVIEW",
+        "APPROVED",
+        "RUNNING",
+        "PAUSED",
+        "INCIDENT",
+        "COMPLETED",
+        "TERMINATED"
+      ]
+    },
+    "StopControls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["global", "cohort", "institutionIds"],
+      "properties": {
+        "global": { "type": "boolean" },
+        "cohort": { "type": "boolean" },
+        "institutionIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/SyntheticReference" }
+        }
+      }
+    },
+    "PilotExecutionInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "executionReference",
+        "pilotReference",
+        "pilotVersion",
+        "cohortReference",
+        "scheduledStart",
+        "scheduledEnd",
+        "operationalOwnerReferences",
+        "makerReference"
+      ],
+      "properties": {
+        "executionReference": { "$ref": "#/$defs/SyntheticReference" },
+        "pilotReference": { "$ref": "#/$defs/SyntheticReference" },
+        "pilotVersion": { "type": "integer", "minimum": 1 },
+        "cohortReference": { "$ref": "#/$defs/SyntheticReference" },
+        "scheduledStart": { "type": "string", "format": "date-time" },
+        "scheduledEnd": { "type": "string", "format": "date-time" },
+        "operationalOwnerReferences": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/SyntheticReference" }
+        },
+        "makerReference": { "$ref": "#/$defs/SyntheticReference" }
+      }
+    },
+    "PilotExecution": {
+      "allOf": [
+        { "$ref": "#/$defs/PilotExecutionInput" },
+        {
+          "type": "object",
+          "required": ["version", "state", "authorityMode", "checkerReference", "stopControls"],
+          "properties": {
+            "version": { "type": "integer", "minimum": 1 },
+            "state": { "$ref": "#/$defs/ExecutionState" },
+            "authorityMode": { "const": "SYNTHETIC_ONLY" },
+            "checkerReference": {
+              "oneOf": [{ "$ref": "#/$defs/SyntheticReference" }, { "type": "null" }]
+            },
+            "stopControls": { "$ref": "#/$defs/StopControls" }
+          }
+        }
+      ]
+    },
+    "GoNoGoInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "configurationReady",
+        "membershipValid",
+        "approvalDataFresh",
+        "migrationReconciled",
+        "policyBlockersResolved",
+        "identityProviderReady",
+        "authenticationAndRolesReady",
+        "securityReady",
+        "backupAndRecoveryReady",
+        "incidentOwnershipReady",
+        "supportReady",
+        "accessibilityReady",
+        "trainingComplete",
+        "observabilityAndAlertsReady",
+        "rollbackReady",
+        "syntheticExecutionApproved",
+        "productionAuthorityGranted"
+      ],
+      "properties": {
+        "configurationReady": { "type": "boolean" },
+        "membershipValid": { "type": "boolean" },
+        "approvalDataFresh": { "type": "boolean" },
+        "migrationReconciled": { "type": "boolean" },
+        "policyBlockersResolved": { "type": ["boolean", "null"] },
+        "identityProviderReady": { "type": "boolean" },
+        "authenticationAndRolesReady": { "type": "boolean" },
+        "securityReady": { "type": "boolean" },
+        "backupAndRecoveryReady": { "type": "boolean" },
+        "incidentOwnershipReady": { "type": "boolean" },
+        "supportReady": { "type": "boolean" },
+        "accessibilityReady": { "type": "boolean" },
+        "trainingComplete": { "type": "boolean" },
+        "observabilityAndAlertsReady": { "type": "boolean" },
+        "rollbackReady": { "type": "boolean" },
+        "syntheticExecutionApproved": { "type": "boolean" },
+        "productionAuthorityGranted": { "type": ["boolean", "null"] }
+      }
+    },
+    "GoNoGoCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "result", "blocking", "explanation"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z0-9_]+$" },
+        "result": { "enum": ["PASS", "FAIL", "MANUAL_REVIEW"] },
+        "blocking": { "type": "boolean" },
+        "explanation": { "type": "string", "minLength": 1 }
+      }
+    },
+    "GoNoGoAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assessmentReference",
+        "executionReference",
+        "executionVersion",
+        "outcome",
+        "startable",
+        "checks",
+        "assessedAt"
+      ],
+      "properties": {
+        "assessmentReference": { "$ref": "#/$defs/SyntheticReference" },
+        "executionReference": { "$ref": "#/$defs/SyntheticReference" },
+        "executionVersion": { "type": "integer", "minimum": 1 },
+        "outcome": { "enum": ["PASS", "FAIL", "MANUAL_REVIEW"] },
+        "startable": { "type": "boolean" },
+        "checks": { "type": "array", "minItems": 17, "items": { "$ref": "#/$defs/GoNoGoCheck" } },
+        "assessedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "ExecutionCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expectedVersion", "requestReference"],
+      "properties": {
+        "expectedVersion": { "type": "integer", "minimum": 1 },
+        "requestReference": { "$ref": "#/$defs/SyntheticReference" }
+      }
+    },
+    "Participation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "executionReference",
+        "institutionId",
+        "campusIds",
+        "readiness",
+        "approvalDataFresh",
+        "identityDependency"
+      ],
+      "properties": {
+        "executionReference": { "$ref": "#/$defs/SyntheticReference" },
+        "institutionId": { "$ref": "#/$defs/SyntheticReference" },
+        "campusIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/SyntheticReference" }
+        },
+        "readiness": { "enum": ["READY", "BLOCKED", "DEGRADED", "PAUSED"] },
+        "approvalDataFresh": { "type": "boolean" },
+        "identityDependency": { "enum": ["READY", "DEGRADED", "OUTAGE"] }
+      }
+    },
+    "IncidentInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedVersion",
+        "incidentReference",
+        "severity",
+        "affectedCapabilities",
+        "stopAction",
+        "ownerReference",
+        "evidenceReferences"
+      ],
+      "properties": {
+        "expectedVersion": { "type": "integer", "minimum": 1 },
+        "incidentReference": { "$ref": "#/$defs/SyntheticReference" },
+        "severity": { "enum": ["SEV1", "SEV2", "SEV3", "SEV4"] },
+        "affectedCapabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["BATCH_UPLOAD", "CASEWORK", "PURPOSE_LIMITED_VERIFICATION", "NOTIFICATIONS"]
+          }
+        },
+        "stopAction": { "enum": ["AUTOMATIC", "MANUAL"] },
+        "ownerReference": { "$ref": "#/$defs/SyntheticReference" },
+        "evidenceReferences": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SyntheticReference" }
+        }
+      }
+    },
+    "WorkerStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "jobReference",
+        "executionReference",
+        "type",
+        "state",
+        "checkpoint",
+        "attemptCount",
+        "maximumAttempts",
+        "batchLimit",
+        "availableAt",
+        "institutionId"
+      ],
+      "properties": {
+        "jobReference": { "$ref": "#/$defs/SyntheticReference" },
+        "executionReference": { "$ref": "#/$defs/SyntheticReference" },
+        "type": {
+          "enum": [
+            "ONBOARDING_CHECK",
+            "MIGRATION_RECONCILIATION",
+            "SUBMISSION_MONITORING",
+            "NOTIFICATION_PROCESSING",
+            "CASEWORK_SNAPSHOT",
+            "EXIT_RECONCILIATION"
+          ]
+        },
+        "state": { "enum": ["PENDING", "IN_FLIGHT", "RETRYABLE", "COMPLETED", "DEAD_LETTER"] },
+        "checkpoint": { "type": "object" },
+        "attemptCount": { "type": "integer", "minimum": 0 },
+        "maximumAttempts": { "type": "integer", "minimum": 1, "maximum": 20 },
+        "batchLimit": { "type": "integer", "minimum": 1, "maximum": 10000 },
+        "availableAt": { "type": "string", "format": "date-time" },
+        "institutionId": {
+          "oneOf": [{ "$ref": "#/$defs/SyntheticReference" }, { "type": "null" }]
+        }
+      }
+    },
+    "EvidenceSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidenceReference",
+        "executionReference",
+        "institutionId",
+        "capturedAt",
+        "onboardingCompletionRate",
+        "taskCompletionRate",
+        "submissionSuccessRate",
+        "rejectionRate",
+        "validationRuleTrends",
+        "identityPendingRate",
+        "identityOutageRate",
+        "processingLatencyP95Ms",
+        "migrationDrift",
+        "notificationDeadLetters",
+        "caseworkBacklog",
+        "caseworkOldestAgeHours",
+        "capacityAnomalies",
+        "accessibilityFindings",
+        "incidentCount",
+        "recoveryDurationMinutes"
+      ],
+      "properties": {
+        "evidenceReference": { "$ref": "#/$defs/SyntheticReference" },
+        "executionReference": { "$ref": "#/$defs/SyntheticReference" },
+        "institutionId": {
+          "oneOf": [{ "$ref": "#/$defs/SyntheticReference" }, { "type": "null" }]
+        },
+        "capturedAt": { "type": "string", "format": "date-time" },
+        "onboardingCompletionRate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "taskCompletionRate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "submissionSuccessRate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "rejectionRate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "validationRuleTrends": {
+          "type": "object",
+          "propertyNames": { "pattern": "^[A-Z0-9_]+$" },
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "identityPendingRate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "identityOutageRate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "processingLatencyP95Ms": { "type": "number", "minimum": 0 },
+        "migrationDrift": { "type": "integer", "minimum": 0 },
+        "notificationDeadLetters": { "type": "integer", "minimum": 0 },
+        "caseworkBacklog": { "type": "integer", "minimum": 0 },
+        "caseworkOldestAgeHours": { "type": "number", "minimum": 0 },
+        "capacityAnomalies": { "type": "integer", "minimum": 0 },
+        "accessibilityFindings": { "type": "integer", "minimum": 0 },
+        "incidentCount": { "type": "integer", "minimum": 0 },
+        "recoveryDurationMinutes": { "type": "number", "minimum": 0 }
+      }
+    },
+    "ExpansionInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedVersion",
+        "expansionReference",
+        "newPilotVersion",
+        "institutionIds",
+        "campusIds",
+        "proposalMakerReference",
+        "checkerReference",
+        "readinessPassed",
+        "dryRunPassed",
+        "reconciliationDrift"
+      ],
+      "properties": {
+        "expectedVersion": { "type": "integer", "minimum": 1 },
+        "expansionReference": { "$ref": "#/$defs/SyntheticReference" },
+        "newPilotVersion": { "type": "integer", "minimum": 1 },
+        "institutionIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/SyntheticReference" }
+        },
+        "campusIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/SyntheticReference" }
+        },
+        "proposalMakerReference": { "$ref": "#/$defs/SyntheticReference" },
+        "checkerReference": { "$ref": "#/$defs/SyntheticReference" },
+        "readinessPassed": { "type": "boolean" },
+        "dryRunPassed": { "type": "boolean" },
+        "reconciliationDrift": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "CompletionInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedVersion",
+        "source",
+        "terminationRecommended",
+        "accepted",
+        "rejected",
+        "pending",
+        "casework",
+        "workersDrained",
+        "capacityCountersValid",
+        "auditOutboxConsistent",
+        "unresolvedIncidents",
+        "policyBlockers"
+      ],
+      "properties": {
+        "expectedVersion": { "type": "integer", "minimum": 1 },
+        "source": { "type": "integer", "minimum": 0 },
+        "terminationRecommended": { "type": "boolean" },
+        "accepted": { "type": "integer", "minimum": 0 },
+        "rejected": { "type": "integer", "minimum": 0 },
+        "pending": { "type": "integer", "minimum": 0 },
+        "casework": { "type": "integer", "minimum": 0 },
+        "workersDrained": { "type": "boolean" },
+        "capacityCountersValid": { "type": "boolean" },
+        "auditOutboxConsistent": { "type": "boolean" },
+        "unresolvedIncidents": { "type": "integer", "minimum": 0 },
+        "policyBlockers": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "CompletionReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reportReference",
+        "executionReference",
+        "executionVersion",
+        "classification",
+        "authorityDecisionRequired",
+        "reconciliation",
+        "completedAt"
+      ],
+      "properties": {
+        "reportReference": { "$ref": "#/$defs/SyntheticReference" },
+        "executionReference": { "$ref": "#/$defs/SyntheticReference" },
+        "executionVersion": { "type": "integer", "minimum": 1 },
+        "classification": {
+          "enum": [
+            "EXPAND_READY",
+            "EXTEND_PILOT",
+            "REMEDIATE",
+            "TERMINATE",
+            "AUTHORITY_REVIEW_REQUIRED"
+          ]
+        },
+        "authorityDecisionRequired": { "const": true },
+        "reconciliation": { "type": "object" },
+        "completedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "SyntheticPilotExecutionScenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["institutions", "events"],
+      "properties": {
+        "institutions": {
+          "type": "array",
+          "minItems": 4,
+          "items": { "$ref": "#/$defs/Participation" }
+        },
+        "events": {
+          "type": "array",
+          "minItems": 12,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sequence", "event", "state", "reference"],
+            "properties": {
+              "sequence": { "type": "integer", "minimum": 1 },
+              "event": { "type": "string", "pattern": "^[A-Z0-9_]+$" },
+              "state": { "type": "string", "pattern": "^[A-Z0-9_]+$" },
+              "reference": { "$ref": "#/$defs/SyntheticReference" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

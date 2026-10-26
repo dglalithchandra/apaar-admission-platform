@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: APAAR Admission Registry API
-  version: 0.4.0-draft
+  version: 0.5.0-draft
   description: >-
     Product-owned draft for institution submission, decision tracking and
     purpose-limited verification. It is not an official AICTE or APAAR API.
@@ -1137,6 +1137,344 @@ paths:
                 { schema: { $ref: '#/components/schemas/PilotReadinessAssessment' } },
             }
         '404': { $ref: '#/components/responses/NotFound' }
+  /v1/pilot-executions:
+    post:
+      operationId: createPilotExecution
+      summary: Create a synthetic execution from an immutable pilot configuration
+      description: AICTE operations scope. Production authority remains disabled.
+      x-required-roles: [SERVICE_INTEGRATION_CLIENT]
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PilotExecutionInput' }
+      responses:
+        '201': { $ref: '#/components/responses/PilotExecutionChanged' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilot-executions/{executionReference}:
+    get:
+      operationId: getPilotExecution
+      summary: Read the latest tenant-authorised synthetic execution version
+      x-required-roles: [AICTE_REVIEWER, AICTE_CHECKER, AUDITOR, SERVICE_INTEGRATION_CLIENT]
+      parameters: [{ $ref: '#/components/parameters/ExecutionReference' }]
+      responses:
+        '200': { $ref: '#/components/responses/PilotExecutionChanged' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/pilot-executions/{executionReference}/go-no-go:
+    post:
+      operationId: assessPilotExecutionGoNoGo
+      summary: Append a deterministic fail-closed go/no-go package
+      x-required-roles: [SERVICE_INTEGRATION_CLIENT]
+      parameters:
+        - $ref: '#/components/parameters/ExecutionReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GoNoGoInput' }
+      responses:
+        '200':
+          description: Immutable assessment; production authority may remain manual review
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GoNoGoAssessment' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilot-executions/{executionReference}/go-live-review:
+    post:
+      operationId: submitPilotGoLiveReview
+      summary: Submit the current execution version for independent review
+      x-required-roles: [SERVICE_INTEGRATION_CLIENT]
+      parameters:
+        - $ref: '#/components/parameters/ExecutionReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/ExecutionCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/PilotExecutionChanged' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilot-executions/{executionReference}/approval:
+    post:
+      operationId: approvePilotExecution
+      summary: Independently approve the exact go-live review version
+      x-required-roles: [AICTE_CHECKER]
+      parameters:
+        - $ref: '#/components/parameters/ExecutionReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/ExecutionCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/PilotExecutionChanged' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilot-executions/{executionReference}/start:
+    post:
+      operationId: startPilotExecution
+      summary: Start an approved execution inside its effective window
+      x-required-roles: [AICTE_CHECKER]
+      parameters:
+        - $ref: '#/components/parameters/ExecutionReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/ExecutionCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/PilotExecutionChanged' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilot-executions/{executionReference}/pause:
+    post:
+      operationId: pausePilotExecution
+      summary: Stop new exposure without changing accepted admissions
+      x-required-roles: [SERVICE_INTEGRATION_CLIENT]
+      parameters:
+        - $ref: '#/components/parameters/ExecutionReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/ExecutionCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/PilotExecutionChanged' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilot-executions/{executionReference}/incidents:
+    post:
+      operationId: declarePilotIncident
+      summary: Atomically declare an incident and stop affected exposure
+      x-required-roles: [SERVICE_INTEGRATION_CLIENT]
+      parameters:
+        - $ref: '#/components/parameters/ExecutionReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PilotIncidentInput' }
+      responses:
+        '201': { $ref: '#/components/responses/PilotExecutionChanged' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilot-executions/{executionReference}/incidents/{incidentReference}/resume:
+    post:
+      operationId: resumePilotExecution
+      summary: Resume only after recovery evidence and independent checker approval
+      x-required-roles: [AICTE_CHECKER]
+      parameters:
+        - $ref: '#/components/parameters/ExecutionReference'
+        - $ref: '#/components/parameters/IncidentReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedVersion, recovery, requestReference]
+              properties:
+                expectedVersion: { type: integer, minimum: 1 }
+                recovery: { $ref: '#/components/schemas/GoNoGoInput' }
+                requestReference: { type: string, pattern: '^SYNTH-[A-Z0-9-]+$' }
+      responses:
+        '200': { $ref: '#/components/responses/PilotExecutionChanged' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilot-executions/{executionReference}/stop-controls:
+    post:
+      operationId: setPilotExecutionStopControls
+      summary: Set global, cohort or institution stop controls
+      x-required-roles: [SERVICE_INTEGRATION_CLIENT]
+      parameters:
+        - $ref: '#/components/parameters/ExecutionReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedVersion, controls, requestReference]
+              properties:
+                expectedVersion: { type: integer, minimum: 1 }
+                controls: { $ref: '#/components/schemas/PilotStopControls' }
+                requestReference: { type: string, pattern: '^SYNTH-[A-Z0-9-]+$' }
+      responses:
+        '200': { $ref: '#/components/responses/PilotExecutionChanged' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilot-executions/{executionReference}/participation:
+    post:
+      operationId: recordPilotParticipation
+      summary: Append institution and campus participation after membership validation
+      x-required-roles: [SERVICE_INTEGRATION_CLIENT]
+      parameters:
+        - $ref: '#/components/parameters/ExecutionReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PilotParticipation' }
+      responses:
+        '201':
+          description: Immutable institution participation record
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PilotParticipation' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilot-executions/{executionReference}/workers:
+    get:
+      operationId: listPilotWorkerStatus
+      summary: Read bounded worker checkpoints without sensitive identifiers in metric labels
+      x-required-roles: [AICTE_REVIEWER, AICTE_CHECKER, AUDITOR, SERVICE_INTEGRATION_CLIENT]
+      parameters: [{ $ref: '#/components/parameters/ExecutionReference' }]
+      responses:
+        '200':
+          description: Durable worker state
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PilotWorkerStatus' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/pilot-executions/{executionReference}/evidence:
+    post:
+      operationId: recordPilotEvidence
+      summary: Append a privacy-safe evidence snapshot
+      x-required-roles: [SERVICE_INTEGRATION_CLIENT]
+      parameters:
+        - $ref: '#/components/parameters/ExecutionReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PilotEvidenceSnapshot' }
+      responses:
+        '201':
+          description: Immutable evidence snapshot
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PilotEvidenceSnapshot' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilot-executions/{executionReference}/expansions:
+    post:
+      operationId: expandPilotExecutionCohort
+      summary: Create a re-gated immutable execution version from a paused cohort
+      x-required-roles: [AICTE_CHECKER]
+      parameters:
+        - $ref: '#/components/parameters/ExecutionReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PilotExpansionInput' }
+      responses:
+        '200': { $ref: '#/components/responses/PilotExecutionChanged' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilot-executions/{executionReference}/complete:
+    post:
+      operationId: completePilotExecution
+      summary: Drain, reconcile and atomically complete the synthetic execution
+      x-required-roles: [AICTE_CHECKER]
+      parameters:
+        - $ref: '#/components/parameters/ExecutionReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PilotCompletionInput' }
+      responses:
+        '200':
+          description: Completed execution and immutable recommendation report
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PilotCompletionReport' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilot-executions/{executionReference}/terminate:
+    post:
+      operationId: terminatePilotExecution
+      summary: Terminate a non-terminal synthetic execution without deleting history
+      x-required-roles: [AICTE_CHECKER]
+      parameters:
+        - $ref: '#/components/parameters/ExecutionReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/ExecutionCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/PilotExecutionChanged' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/pilot-executions/{executionReference}/completion-report:
+    get:
+      operationId: getPilotCompletionReport
+      summary: Read the immutable technical recommendation without making an authority decision
+      x-required-roles: [AICTE_REVIEWER, AICTE_CHECKER, AUDITOR, SERVICE_INTEGRATION_CLIENT]
+      parameters: [{ $ref: '#/components/parameters/ExecutionReference' }]
+      responses:
+        '200':
+          description: Immutable completion report
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PilotCompletionReport' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/institutions/{institutionId}/pilot-executions/{executionReference}/evidence:
+    get:
+      operationId: getInstitutionPilotEvidence
+      summary: Read tenant-scoped institution evidence outside public metric labels
+      x-required-roles: [INSTITUTION_OPERATOR, INSTITUTION_ADMINISTRATOR]
+      parameters:
+        - $ref: '#/components/parameters/InstitutionId'
+        - $ref: '#/components/parameters/ExecutionReference'
+      responses:
+        '200':
+          description: Evidence visible only to the matching institution tenant
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PilotEvidenceSnapshot' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 components:
   securitySchemes:
     oauth2:
@@ -1147,6 +1485,16 @@ components:
           tokenUrl: https://identity.example.invalid/token
           scopes: {}
   parameters:
+    ExecutionReference:
+      name: executionReference
+      in: path
+      required: true
+      schema: { type: string, pattern: '^SYNTH-[A-Z0-9-]+$' }
+    IncidentReference:
+      name: incidentReference
+      in: path
+      required: true
+      schema: { type: string, pattern: '^SYNTH-[A-Z0-9-]+$' }
     PilotReference:
       name: pilotReference
       in: path
@@ -1199,6 +1547,11 @@ components:
       in: query
       schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
   requestBodies:
+    ExecutionCommand:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/PilotExecutionCommand' }
     PilotTransition:
       required: true
       content:
@@ -1219,6 +1572,11 @@ components:
           schema:
             $ref: '#/components/schemas/ExpectedVersionRequest'
   responses:
+    PilotExecutionChanged:
+      description: Immutable execution version or exact idempotent replay
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/PilotExecution' }
     PilotChanged:
       description: Pilot state changed or exact idempotent replay
       content:
@@ -1267,6 +1625,32 @@ components:
           schema:
             $ref: '#/components/schemas/CaseView'
   schemas:
+    PilotExecutionInput:
+      $ref: ../schemas/pilot-execution.schema.json#/$defs/PilotExecutionInput
+    PilotExecution:
+      $ref: ../schemas/pilot-execution.schema.json#/$defs/PilotExecution
+    PilotExecutionCommand:
+      $ref: ../schemas/pilot-execution.schema.json#/$defs/ExecutionCommand
+    GoNoGoInput:
+      $ref: ../schemas/pilot-execution.schema.json#/$defs/GoNoGoInput
+    GoNoGoAssessment:
+      $ref: ../schemas/pilot-execution.schema.json#/$defs/GoNoGoAssessment
+    PilotStopControls:
+      $ref: ../schemas/pilot-execution.schema.json#/$defs/StopControls
+    PilotParticipation:
+      $ref: ../schemas/pilot-execution.schema.json#/$defs/Participation
+    PilotIncidentInput:
+      $ref: ../schemas/pilot-execution.schema.json#/$defs/IncidentInput
+    PilotWorkerStatus:
+      $ref: ../schemas/pilot-execution.schema.json#/$defs/WorkerStatus
+    PilotEvidenceSnapshot:
+      $ref: ../schemas/pilot-execution.schema.json#/$defs/EvidenceSnapshot
+    PilotExpansionInput:
+      $ref: ../schemas/pilot-execution.schema.json#/$defs/ExpansionInput
+    PilotCompletionInput:
+      $ref: ../schemas/pilot-execution.schema.json#/$defs/CompletionInput
+    PilotCompletionReport:
+      $ref: ../schemas/pilot-execution.schema.json#/$defs/CompletionReport
     PilotConfigurationInput:
       $ref: ../schemas/pilot-rollout.schema.json#/$defs/PilotConfigurationInput
     PilotConfiguration:

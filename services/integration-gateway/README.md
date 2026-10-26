@@ -23,3 +23,5 @@ Live APAAR, AICTE approval feed, OIDC, notification and signing integrations rem
 Run `npm run test:e2e:gateway` for the pinned PostgreSQL suite. Run `npm run test:container` for the hardened runtime smoke test. See the integration runbook and Stage 6 assurance report for load, recovery and operational commands.
 
 Run `npm run test:e2e:pilot` for the isolated Stage 7A PostgreSQL suite. These controls remain synthetic and do not activate real institutions.
+
+Run `npm run test:e2e:pilot-execution` for the isolated Stage 7B PostgreSQL suite. It exercises lifecycle concurrency, idempotency, participation, evidence, incidents, recovery, worker leases/checkpoints and completion against `postgres:17.6-alpine`. Production authority and adapters remain disabled.

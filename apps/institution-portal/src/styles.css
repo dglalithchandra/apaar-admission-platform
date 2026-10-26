@@ -992,10 +992,116 @@ td {
 .pilot-state-panel {
   margin-bottom: 20px;
 }
+.pilot-section {
+  margin-bottom: 20px;
+}
+.pilot-state-actions {
+  max-height: 190px;
+  padding: 4px;
+  overflow-y: auto;
+}
+.pilot-institution-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.pilot-institution-grid article {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px;
+  background: #f7fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.pilot-institution-grid article > span:first-child {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pilot-two-column {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.pilot-checklist,
+.pilot-gate-list {
+  display: grid;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.pilot-checklist li,
+.pilot-gate-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+.pilot-checklist li {
+  flex-direction: column;
+  gap: 4px;
+}
+.pilot-checklist span,
+.pilot-gate-list span {
+  color: var(--muted);
+}
+.pilot-gate-list strong {
+  flex: 0 0 auto;
+  color: var(--navy);
+  font-size: 12px;
+}
+.pilot-timeline {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.pilot-timeline span {
+  padding: 14px;
+  color: var(--muted);
+  background: #f7fafc;
+  border-left: 3px solid var(--teal);
+}
+.pilot-timeline strong {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--navy);
+}
+.completion-panel {
+  border-top: 4px solid var(--navy);
+}
+
+@media (max-width: 900px) {
+  .pilot-institution-grid,
+  .pilot-timeline {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pilot-two-column {
+    grid-template-columns: 1fr;
+  }
+}
 
 @media (max-width: 600px) {
   .pilot-scorecard {
     grid-template-columns: 1fr;
+  }
+  .pilot-institution-grid,
+  .pilot-timeline {
+    grid-template-columns: 1fr;
+  }
+  .pilot-state-actions {
+    max-height: 240px;
+  }
+  .pilot-gate-list li {
+    flex-direction: column;
+    gap: 6px;
   }
 }
 
