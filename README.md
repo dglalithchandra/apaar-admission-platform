@@ -43,6 +43,36 @@ ledger. See [ADR-0021](docs/architecture/decisions/ADR-0021-advisory-policy-digi
 
 No real student data, credentials or official AICTE/APAAR branding are present.
 
+## Run the working prototype
+
+### Requirements
+
+- Docker Desktop with its Linux container engine running
+- Git
+- Node.js 24 or newer and npm 11 or newer (needed for local checks and development)
+
+### Start the complete local platform
+
+From the repository root, run:
+
+```powershell
+npm run prototype:start
+```
+
+When Docker Compose reports that the services are healthy, open <http://127.0.0.1:5173>. The first start builds the containers and initializes a local PostgreSQL database with synthetic records. No AICTE, APAAR, API Setu or institutional credentials are required. These external services are represented by local synthetic adapters; this is not an official deployment.
+
+Stop the platform and keep its local data with:
+
+```powershell
+npm run prototype:stop
+```
+
+### Run checks
+
+Install the locked dependencies with `npm ci`, then run `npm run check`. The PostgreSQL integration suite is `npm run test:integration:postgres`; the complete synthetic system journey is `npm run test:full-system`.
+
+All committed examples use `SYNTH-` identifiers. Do not enter real student data or credentials.
+
 ## Read first
 
 1. [Product scope](docs/product/system-scope.md)

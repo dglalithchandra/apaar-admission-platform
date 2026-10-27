@@ -17,6 +17,8 @@
     "build": "npm run build -w @apaar-platform/admission-domain && npm run build -w @apaar-platform/policy-digital-twin && npm run build -w @apaar-platform/admission-application && npm run build -w @apaar-platform/batch-ingestion && npm run build -w @apaar-platform/admission-casework && npm run build -w @apaar-platform/integration-gateway && npm run build -w @apaar-platform/institution-portal",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run validate:contracts && npm run build",
     "clean": "npm run clean --workspaces --if-present",
+    "prototype:start": "docker compose -f infra/compose/compose.yaml up --build --wait",
+    "prototype:stop": "docker compose -f infra/compose/compose.yaml down",
     "format": "prettier --write \"services/**/*.{ts,json,md}\" \"apps/**/*.{ts,tsx,json,md,css,html}\" \"contracts/**/*.{json,yaml}\" \"scripts/**/*.{js,mjs,ts}\" \"tests/**/*.{js,ts,json}\" \"infra/**/*.{yaml,yml,md}\" \"*.{json,mjs}\" \"docs/**/*.md\" \"README.md\"",
     "format:check": "prettier --check \"services/**/*.{ts,json,md}\" \"apps/**/*.{ts,tsx,json,md,css,html}\" \"contracts/**/*.{json,yaml}\" \"scripts/**/*.{js,mjs,ts}\" \"tests/**/*.{js,ts,json}\" \"infra/**/*.{yaml,yml,md}\" \"*.{json,mjs}\" \"docs/**/*.md\" \"README.md\"",
     "lint": "eslint .",
