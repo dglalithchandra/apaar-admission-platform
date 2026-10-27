@@ -1,4 +1,16 @@
 import { useMemo, useRef, useState, type ChangeEvent, type DragEvent, type JSX } from 'react';
+import {
+  Activity,
+  Building2,
+  CircleHelp,
+  ClipboardCheck,
+  FileDown,
+  FileSpreadsheet,
+  FileUp,
+  FlaskConical,
+  GraduationCap,
+  ShieldCheck,
+} from 'lucide-react';
 import { CaseworkWorkspace } from './CaseworkWorkspace.js';
 import type { CaseworkClient, CaseworkRole } from './casework-types.js';
 import { DemoCaseworkClient } from './demo-casework-client.js';
@@ -205,14 +217,17 @@ export function App({
     <div className="app-shell">
       <header className="topbar">
         <div className="brand-mark" aria-hidden="true">
-          AR
+          <GraduationCap size={22} strokeWidth={1.9} />
         </div>
         <div className="brand-copy">
           <strong>Admission Registry</strong>
           <span>Institution workspace · Synthetic environment</span>
         </div>
         <div className="session">
-          <span>Synthetic Institute of Technology</span>
+          <span className="session-org">
+            <Building2 aria-hidden="true" size={15} strokeWidth={1.8} />
+            Synthetic Institute of Technology
+          </span>
           <label className="role-switcher">
             <span className="sr-only">Preview role</span>
             <select
@@ -238,7 +253,7 @@ export function App({
       </header>
       <div className="workspace">
         <nav aria-label="Institution navigation" className="sidebar">
-          <p className="nav-label">Admissions</p>
+          <p className="nav-label">Workspace</p>
           <button
             aria-current={view === 'BATCH' ? 'page' : undefined}
             onClick={() => {
@@ -246,6 +261,7 @@ export function App({
             }}
             type="button"
           >
+            <FileUp aria-hidden="true" className="nav-icon" size={17} strokeWidth={1.8} />
             Batch upload
           </button>
           <button
@@ -255,6 +271,7 @@ export function App({
             }}
             type="button"
           >
+            <ClipboardCheck aria-hidden="true" className="nav-icon" size={17} strokeWidth={1.8} />
             Casework
           </button>
           <button
@@ -264,6 +281,7 @@ export function App({
             }}
             type="button"
           >
+            <ShieldCheck aria-hidden="true" className="nav-icon" size={17} strokeWidth={1.8} />
             Integration assurance
           </button>
           <button
@@ -273,6 +291,7 @@ export function App({
             }}
             type="button"
           >
+            <Activity aria-hidden="true" className="nav-icon" size={17} strokeWidth={1.8} />
             Pilot execution
           </button>
           <button
@@ -282,10 +301,14 @@ export function App({
             }}
             type="button"
           >
-            Policy Lab <span className="nav-new">New</span>
+            <FlaskConical aria-hidden="true" className="nav-icon" size={17} strokeWidth={1.8} />
+            <span>Policy Lab</span> <span className="nav-new">New</span>
           </button>
           <div className="support-note">
-            <strong>Need help?</strong>
+            <strong>
+              <CircleHelp aria-hidden="true" size={16} strokeWidth={1.8} />
+              Need help?
+            </strong>
             <span>Keep the receipt reference when contacting support.</span>
           </div>
         </nav>
@@ -332,6 +355,7 @@ export function App({
                   onClick={() => void template()}
                   type="button"
                 >
+                  <FileDown aria-hidden="true" size={16} strokeWidth={1.9} />
                   Download template v1.0
                 </button>
               </div>
@@ -363,7 +387,7 @@ export function App({
                   onDrop={dropped}
                 >
                   <div className="upload-icon" aria-hidden="true">
-                    ↑
+                    <FileUp size={23} strokeWidth={1.8} />
                   </div>
                   <label htmlFor="batch-file">Choose a CSV file</label>
                   <span>or drag and drop it here</span>
@@ -408,7 +432,7 @@ export function App({
 
               {batch === null ? (
                 <section className="empty-state" id="results">
-                  <span aria-hidden="true">≡</span>
+                  <FileSpreadsheet aria-hidden="true" className="empty-state-icon" size={28} />
                   <h2>No batch selected</h2>
                   <p>Upload a CSV to see reconciled totals and row-level results.</p>
                 </section>

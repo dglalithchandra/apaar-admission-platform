@@ -1,6 +1,6 @@
 :root {
-  color: #17212b;
-  background: #f4f6f8;
+  color: #182a37;
+  background: #f3f6f8;
   font-family:
     Inter,
     ui-sans-serif,
@@ -10,21 +10,24 @@
     'Segoe UI',
     sans-serif;
   font-synthesis: none;
-  --ink: #17212b;
-  --muted: #5c6875;
-  --line: #d7dde3;
-  --surface: #ffffff;
-  --navy: #173f5f;
-  --navy-dark: #0e2b42;
-  --teal: #007f73;
-  --teal-dark: #00665d;
-  --focus: #ffbf47;
+  --ink: #182a37;
+  --muted: #627381;
+  --line: #dce5e9;
+  --surface: rgba(255, 255, 255, 0.9);
+  --navy: #173e54;
+  --navy-dark: #102d3e;
+  --teal: #087f73;
+  --teal-dark: #06665d;
+  --focus: #e9a900;
   --danger: #b42318;
   --danger-bg: #fff4f2;
   --warning: #8a5800;
   --warning-bg: #fff8e6;
   --success: #17633b;
   --success-bg: #ecf8f0;
+  --radius-control: 9px;
+  --radius-panel: 14px;
+  --shadow-panel: 0 10px 30px rgba(33, 62, 76, 0.055), 0 1px 2px rgba(33, 62, 76, 0.04);
 }
 
 .nav-new {
@@ -1389,20 +1392,6 @@ td {
 }
 
 /* Calm, high-contrast workspace styling shared by every portal module. */
-:root {
-  color: #182a37;
-  background: #f3f6f8;
-  --ink: #182a37;
-  --muted: #627381;
-  --line: #dce5e9;
-  --surface: rgba(255, 255, 255, 0.9);
-  --navy: #173e54;
-  --navy-dark: #102d3e;
-  --teal: #087f73;
-  --teal-dark: #06665d;
-  --focus: #e9a900;
-}
-
 body {
   color: var(--ink);
   background:
@@ -1451,13 +1440,20 @@ body {
   color: #e8f0f2;
 }
 
+.session-org {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #dce8eb;
+}
+
 .role-switcher select {
   min-height: 38px;
   padding: 7px 32px 7px 11px;
   color: #f4f8f9;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(212, 229, 232, 0.32);
-  border-radius: 9px;
+  border-radius: var(--radius-control);
 }
 
 .role-switcher select option {
@@ -1494,7 +1490,7 @@ body {
   padding: 11px 13px;
   margin-bottom: 5px;
   color: #405765;
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   font-size: 13px;
   font-weight: 560;
   transition:
@@ -1517,6 +1513,25 @@ body {
   font-weight: 700;
 }
 
+.sidebar > button {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.sidebar .nav-icon {
+  flex: 0 0 17px;
+  color: #758b96;
+}
+
+.sidebar > button[aria-current='page'] .nav-icon {
+  color: #08776b;
+}
+
+.sidebar .nav-new {
+  margin-left: auto;
+}
+
 .support-note {
   padding: 17px 12px 0;
   margin-top: auto;
@@ -1524,8 +1539,15 @@ body {
 }
 
 .support-note strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: #294858;
   font-size: 13px;
+}
+
+.support-note strong svg {
+  color: #718690;
 }
 
 main {
@@ -1570,6 +1592,14 @@ main {
     transform 140ms ease;
 }
 
+.page-heading .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
 .button:hover:not(:disabled) {
   box-shadow: 0 5px 12px rgba(8, 83, 74, 0.17);
   transform: translateY(-1px);
@@ -1597,10 +1627,8 @@ main {
 .empty-state {
   background: var(--surface);
   border: 1px solid rgba(216, 228, 232, 0.92);
-  border-radius: 14px;
-  box-shadow:
-    0 10px 30px rgba(33, 62, 76, 0.055),
-    0 1px 2px rgba(33, 62, 76, 0.04);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -1659,8 +1687,19 @@ main {
 }
 
 .upload-icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
   color: #08776b;
   background: #e1f2ee;
+  border-radius: 13px;
+}
+
+.empty-state-icon {
+  margin: 0 auto;
+  color: #64818c;
+  stroke-width: 1.5;
 }
 
 .selected-file {
