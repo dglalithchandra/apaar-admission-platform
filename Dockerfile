@@ -32,10 +32,15 @@ RUN npm ci --omit=dev --ignore-scripts \
     zlib=1.3.2-r1 \
   && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 COPY --from=build /workspace/services/admission-application/dist ./services/admission-application/dist
+COPY --from=build /workspace/services/admission-application/migrations ./services/admission-application/migrations
 COPY --from=build /workspace/services/admission-casework/dist ./services/admission-casework/dist
+COPY --from=build /workspace/services/admission-casework/migrations ./services/admission-casework/migrations
 COPY --from=build /workspace/services/admission-domain/dist ./services/admission-domain/dist
 COPY --from=build /workspace/services/batch-ingestion/dist ./services/batch-ingestion/dist
+COPY --from=build /workspace/services/batch-ingestion/migrations ./services/batch-ingestion/migrations
 COPY --from=build /workspace/services/integration-gateway/dist ./services/integration-gateway/dist
+COPY --from=build /workspace/services/integration-gateway/migrations ./services/integration-gateway/migrations
+COPY --from=build /workspace/apps/institution-portal/dist ./apps/institution-portal/dist
 USER node
 EXPOSE 8080
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \

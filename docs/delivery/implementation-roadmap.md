@@ -66,6 +66,8 @@ This is a technical readiness package, not evidence of a real pilot. Live instit
 
 The repository now executes a production-shaped synthetic dress rehearsal with immutable execution versions, deterministic go/no-go, maker-checker approval, stop controls, durable workers, incident/recovery, tenant-safe evidence, controlled expansion and atomic completion reports. The multi-institution fixture includes ready, blocked, degraded and paused participation. Production authority remains `MANUAL_REVIEW`, and all real connections remain disabled.
 
+The integration increment connects that control plane to the earlier admission, batch, casework and verification stages in one PostgreSQL-backed reference deployment. Its exit condition is the full-system journey, restart persistence, required regression/security gates and browser acceptance against the compose-served portal—not the presence of authority-controlled credentials.
+
 ## Stage 7C — authorised supervised pilot (blocked pending authority)
 
 Obtain accountable approvals and protected inputs, select a representative real cohort, complete privacy/security review, validate production SLOs and run the approved supervised pilot. Reconcile every result, pause on stop conditions and expand only after authority review. A national launch remains a migration programme, not a single deployment.

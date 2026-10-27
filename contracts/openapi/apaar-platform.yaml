@@ -512,6 +512,21 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationProblem' }
+  /v1/cases/{caseId}/review-start:
+    post:
+      operationId: startAdmissionCaseReview
+      summary: Start review by the authenticated reviewer
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        $ref: '#/components/requestBodies/ExpectedVersionAction'
+      responses:
+        '200': { $ref: '#/components/responses/CaseActionResult' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
   /v1/cases/{caseId}/information-requests:
     post:
       operationId: requestAdmissionCaseInformation
@@ -1475,6 +1490,73 @@ paths:
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /v1/reference-sessions/{role}:
+    get:
+      operationId: getSyntheticReferenceSession
+      summary: Obtain a local-only synthetic role session for reference-environment testing
+      description: >-
+        This endpoint is enabled only when the gateway starts in the synthetic
+        reference environment. Production configuration rejects synthetic token
+        mode during startup.
+      x-synthetic-only: true
+      security: []
+      parameters:
+        - name: role
+          in: path
+          required: true
+          schema: { type: string, pattern: '^SYNTH-[A-Z0-9_-]+$' }
+      responses:
+        '200':
+          description: Short-lived synthetic bearer token
+          headers:
+            Cache-Control: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token]
+                properties:
+                  token: { type: string, minLength: 20 }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/events:
+    get:
+      operationId: listOperationalEvents
+      summary: Read authorised durable operational events after a monotonic cursor
+      x-required-roles: [AICTE_REVIEWER, AICTE_CHECKER, AUDITOR, INSTITUTION_OPERATOR]
+      parameters:
+        - name: after
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        '200':
+          description: Cursor-ordered operational events as JSON or a finite SSE replay
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, nextCursor]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [sequence, eventType, aggregateType, aggregateReference, occurredAt]
+                      properties:
+                        sequence: { type: integer, minimum: 1 }
+                        eventType: { type: string }
+                        aggregateType: { type: string }
+                        aggregateReference: { type: string }
+                        occurredAt: { type: string, format: date-time }
+                        payload: { type: object, additionalProperties: true }
+                  nextCursor: { type: integer, minimum: 0 }
+            text/event-stream:
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
 components:
   securitySchemes:
     oauth2:

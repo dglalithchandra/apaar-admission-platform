@@ -8,6 +8,7 @@ import type {
   ExistingServiceTransportPort,
   GatewayClock,
   GatewayTelemetryPort,
+  OperationalEventStreamPort,
   Principal,
   SecurityEventPort,
 } from './model.js';
@@ -27,11 +28,15 @@ export interface GatewayHttpDependencies {
   readonly authenticator: AuthenticationPort;
   readonly clock: GatewayClock;
   readonly contractValidator: ContractValidationPort;
-  readonly dependencies: () => Readonly<Record<string, 'UP' | 'DEGRADED' | 'DISABLED'>>;
+  readonly dependencies: () =>
+    | Readonly<Record<string, 'UP' | 'DEGRADED' | 'DISABLED'>>
+    | Promise<Readonly<Record<string, 'UP' | 'DEGRADED' | 'DISABLED'>>>;
   readonly existingServices: ExistingServiceTransportPort;
+  readonly events?: OperationalEventStreamPort;
   readonly identityVerifier: AcademicIdentityPort;
   readonly nextCorrelationReference: () => string;
   readonly notificationWorker: NotificationWorker;
+  readonly referenceTokens?: Readonly<Record<string, string>>;
   readonly verificationService: VerificationService;
   readonly verificationStatusService: VerificationStatusService;
   readonly telemetry: GatewayTelemetryPort;
@@ -251,7 +256,7 @@ export class GatewayHttpApplication {
         return;
       }
       if (req.method === 'GET' && url.pathname === '/ready') {
-        const states = this.dependencies.dependencies();
+        const states = await this.dependencies.dependencies();
         const ready = !Object.values(states).includes('DEGRADED');
         send(
           res,
@@ -262,14 +267,33 @@ export class GatewayHttpApplication {
         );
         return;
       }
+      const referenceSession = /^\/v1\/reference-sessions\/([^/]+)$/.exec(url.pathname);
+      if (req.method === 'GET' && referenceSession?.[1] !== undefined) {
+        const token = this.dependencies.referenceTokens?.[decodeURIComponent(referenceSession[1])];
+        if (token === undefined) {
+          throw new GatewayProblem(
+            'SYNTHETIC_SESSION_UNAVAILABLE',
+            404,
+            'The synthetic role session is unavailable.',
+          );
+        }
+        send(res, 200, { token }, correlationReference, { origin });
+        return;
+      }
       const principal = await this.authenticate(req);
       actorReference = principal.actorReference;
       this.limit(principal);
       if (req.method === 'GET' && url.pathname === '/v1/dependencies') {
         authorize(principal, 'AUDIT_READ');
-        send(res, 200, { dependencies: this.dependencies.dependencies() }, correlationReference, {
-          origin,
-        });
+        send(
+          res,
+          200,
+          { dependencies: await this.dependencies.dependencies() },
+          correlationReference,
+          {
+            origin,
+          },
+        );
         return;
       }
       if (req.method === 'GET' && url.pathname === '/metrics') {
@@ -278,6 +302,54 @@ export class GatewayHttpApplication {
           contentType: 'text/plain; version=0.0.4; charset=utf-8',
           origin,
         });
+        return;
+      }
+      if (req.method === 'GET' && url.pathname === '/v1/events') {
+        authorize(principal, principal.roles.includes('AUDITOR') ? 'AUDIT_READ' : 'RECORD_READ');
+        if (this.dependencies.events === undefined) {
+          throw new GatewayProblem(
+            'EVENT_STREAM_UNAVAILABLE',
+            503,
+            'The operational event stream is not configured.',
+          );
+        }
+        const after = Number(url.searchParams.get('after') ?? '0');
+        const limit = Number(url.searchParams.get('limit') ?? '50');
+        if (!Number.isSafeInteger(after) || after < 0 || !Number.isInteger(limit)) {
+          throw new GatewayProblem(
+            'REQUEST_VALIDATION_FAILED',
+            422,
+            'The event cursor is invalid.',
+          );
+        }
+        const events = await this.dependencies.events.list(principal, after, limit);
+        if (req.headers.accept?.includes('text/event-stream')) {
+          const content = events
+            .map(
+              (event) =>
+                `id: ${String(event.sequence)}\nevent: ${event.eventType}\ndata: ${JSON.stringify(event)}\n\n`,
+            )
+            .join('');
+          res.writeHead(200, {
+            'cache-control': 'no-cache, no-store',
+            'content-type': 'text/event-stream; charset=utf-8',
+            'x-accel-buffering': 'no',
+            'x-correlation-id': correlationReference,
+            ...(origin === undefined ? {} : { 'access-control-allow-origin': origin }),
+          });
+          res.end(content);
+          return;
+        }
+        send(
+          res,
+          200,
+          {
+            items: events,
+            nextCursor: events.at(-1)?.sequence ?? after,
+          },
+          correlationReference,
+          { origin },
+        );
         return;
       }
       if (req.method === 'POST' && url.pathname === '/v1/academic-identity/verifications') {

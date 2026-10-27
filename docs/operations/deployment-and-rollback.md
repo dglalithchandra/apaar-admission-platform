@@ -3,10 +3,10 @@
 ## Local deployment proof
 
 1. Run `npm ci` and `npm run check`.
-2. Run all four existing PostgreSQL integration commands and `npm run test:e2e:pilot`.
+2. Run all focused PostgreSQL integration commands, including pilot execution.
 3. Run `npm run test:container` and `npm run test:recovery`.
-4. Start the isolated stack with `docker compose -f infra/compose/compose.yaml up -d --build --wait`.
-5. Confirm `/health`, authenticated `/ready` and auditor-only `/metrics`.
+4. Run `npm run test:full-system`; it builds, starts and exercises the isolated stack.
+5. Confirm `/health`, `/ready`, auditor-only `/metrics`, fresh worker heartbeats and monotonic `/v1/events` cursors.
 6. Run `npm run load:smoke` and then remove the stack with `docker compose -f infra/compose/compose.yaml down -v`.
 
 The compose file is for synthetic local assurance. It must not be promoted directly to production.
@@ -34,3 +34,9 @@ For a controlled pilot, enable the global or institution kill switch before diag
 Apply additive migration `0007_synthetic_pilot_execution.sql` after `0006`. Before deployment, pause synthetic execution exposure, drain or allow worker leases to expire, and retain current checkpoints. Deploy the compatible application and run the migration repeatability check before re-enabling workers.
 
 Rollback uses a forward compensating release or verified database restore. Do not drop immutable execution, command, incident, receipt, evidence or completion tables. If the application must roll back while the additive schema remains, keep new execution capabilities disabled and preserve every recorded version.
+
+## Integrated reference rollout
+
+Migrations `0008_integrated_reference_runtime.sql` and `0009_operational_event_reference_compatibility.sql` are additive. Run the migration and deterministic synthetic seed as one-shot jobs before gateway traffic. The seed is replay-safe; it does not erase operator-created synthetic journeys. Start the gateway, then the independent batch, outbox, notification and pilot workers, and require fresh `BATCH`, `OUTBOX`, `NOTIFICATION` and `PILOT` heartbeats before declaring readiness. The portal starts last.
+
+For application rollback, stop new ingress, allow or expire leases, retain the PostgreSQL volume and redeploy the preceding compatible image. Never edit or delete event-stream rows, receipts or case history. Use `npm run reference:reset` only when intentionally destroying a local synthetic environment; it is not a production recovery procedure.

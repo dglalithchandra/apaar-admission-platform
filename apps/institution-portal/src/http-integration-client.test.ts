@@ -63,6 +63,27 @@ describe('HttpIntegrationClient', () => {
     );
   });
 
+  it('uses the institution token for the provider-outage reference journey', async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ status: 'TEMPORARILY_UNAVAILABLE' }), { status: 200 }),
+      );
+    const client = new HttpIntegrationClient({
+      baseUrl: 'http://127.0.0.1:8080',
+      fetch: fetcher,
+      providerToken: vi.fn().mockResolvedValue('SYNTH-INSTITUTION-TOKEN'),
+      token: vi.fn().mockResolvedValue('SYNTH-VERIFIER-TOKEN'),
+    });
+
+    await expect(client.simulateProviderOutage()).resolves.toEqual({
+      status: 'TEMPORARILY_UNAVAILABLE',
+    });
+    expect(new Headers(fetcher.mock.calls[0]?.[1]?.headers).get('authorization')).toBe(
+      'Bearer SYNTH-INSTITUTION-TOKEN',
+    );
+  });
+
   it('does not pretend production HTTP can simulate access failures', async () => {
     const client = new HttpIntegrationClient({
       baseUrl: 'http://127.0.0.1:8080',

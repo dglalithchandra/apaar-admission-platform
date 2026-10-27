@@ -1,19 +1,38 @@
 name: apaar-platform-local
+
+x-runtime-environment: &runtime-environment
+  DATABASE_APPLICATION_NAME: apaar-reference-runtime
+  DATABASE_MAX_CONNECTIONS: '10'
+  DATABASE_SSL: 'false'
+  DATABASE_STATEMENT_TIMEOUT_MS: '15000'
+  DATABASE_URL: postgresql://apaar_local_admin:SYNTH-LOCAL-POSTGRES-ONLY@postgres:5432/apaar_local_synth
+  NODE_ENV: development
+
+x-runtime-security: &runtime-security
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  init: true
+  stop_grace_period: 15s
+
 services:
   postgres:
     image: postgres:17.6-alpine@sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94
     environment:
-      POSTGRES_DB: apaar
+      POSTGRES_DB: apaar_local_synth
       POSTGRES_PASSWORD: SYNTH-LOCAL-POSTGRES-ONLY
       POSTGRES_USER: apaar_local_admin
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U apaar_local_admin -d apaar']
+      test: ['CMD-SHELL', 'pg_isready -U apaar_local_admin -d apaar_local_synth']
       interval: 5s
       timeout: 3s
       retries: 12
     ports:
       - '127.0.0.1:54329:5432'
-    read_only: true
     tmpfs:
       - /run/postgresql
       - /tmp
@@ -21,16 +40,42 @@ services:
       - apaar-postgres-data:/var/lib/postgresql/data
     security_opt:
       - no-new-privileges:true
+    networks: [backend]
+
+  migrate:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    command: ['node', 'services/integration-gateway/dist/migrate-reference.js']
+    environment: *runtime-environment
+    <<: *runtime-security
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [backend]
+
+  seed:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    command: ['node', 'services/integration-gateway/dist/seed-reference.js']
+    environment: *runtime-environment
+    <<: *runtime-security
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [backend]
+
   gateway:
     build:
       context: ../..
       dockerfile: Dockerfile
     environment:
+      <<: *runtime-environment
       ALLOWED_ORIGINS: http://127.0.0.1:5173
       APAAR_MODE: simulator
       GATEWAY_HOST: 0.0.0.0
       GATEWAY_PORT: '8080'
-      NODE_ENV: development
       SYNTHETIC_AUTH_ENABLED: 'true'
     healthcheck:
       test:
@@ -42,20 +87,174 @@ services:
         ]
       interval: 5s
       timeout: 3s
-      retries: 12
+      retries: 20
     ports:
       - '127.0.0.1:8080:8080'
-    read_only: true
-    tmpfs:
-      - /tmp
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    init: true
-    stop_grace_period: 15s
+    <<: *runtime-security
     depends_on:
-      postgres:
+      seed:
+        condition: service_completed_successfully
+    networks: [backend]
+
+  batch-worker:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    command: ['node', 'services/integration-gateway/dist/worker.js']
+    environment:
+      <<: *runtime-environment
+      APAAR_MODE: simulator
+      SYNTHETIC_AUTH_ENABLED: 'true'
+      WORKER_INTERVAL_MS: '250'
+      WORKER_REFERENCE: SYNTH-WORKER-BATCH-001
+      WORKER_TYPE: BATCH
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          'import(''pg'').then(async({Pool})=>{const p=new Pool({connectionString:process.env.DATABASE_URL});try{const r=await p.query("SELECT count(*)::int n FROM runtime_worker_heartbeats WHERE worker_reference=''SYNTH-WORKER-BATCH-001'' AND worker_type=''BATCH'' AND state=''READY'' AND observed_at>transaction_timestamp()-interval ''30 seconds''");if(r.rows[0].n!==1)process.exitCode=1}catch{process.exitCode=1}finally{await p.end()}})',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    <<: *runtime-security
+    depends_on:
+      gateway:
         condition: service_healthy
+    networks: [backend]
+
+  outbox-worker:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    command: ['node', 'services/integration-gateway/dist/worker.js']
+    environment:
+      <<: *runtime-environment
+      APAAR_MODE: simulator
+      SYNTHETIC_AUTH_ENABLED: 'true'
+      WORKER_INTERVAL_MS: '250'
+      WORKER_REFERENCE: SYNTH-WORKER-OUTBOX-001
+      WORKER_TYPE: OUTBOX
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          'import(''pg'').then(async({Pool})=>{const p=new Pool({connectionString:process.env.DATABASE_URL});try{const r=await p.query("SELECT count(*)::int n FROM runtime_worker_heartbeats WHERE worker_reference=''SYNTH-WORKER-OUTBOX-001'' AND worker_type=''OUTBOX'' AND state=''READY'' AND observed_at>transaction_timestamp()-interval ''30 seconds''");if(r.rows[0].n!==1)process.exitCode=1}catch{process.exitCode=1}finally{await p.end()}})',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    <<: *runtime-security
+    depends_on:
+      gateway:
+        condition: service_healthy
+    networks: [backend]
+
+  notification-worker:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    command: ['node', 'services/integration-gateway/dist/worker.js']
+    environment:
+      <<: *runtime-environment
+      APAAR_MODE: simulator
+      SYNTHETIC_AUTH_ENABLED: 'true'
+      WORKER_INTERVAL_MS: '250'
+      WORKER_REFERENCE: SYNTH-WORKER-NOTIFICATION-001
+      WORKER_TYPE: NOTIFICATION
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          'import(''pg'').then(async({Pool})=>{const p=new Pool({connectionString:process.env.DATABASE_URL});try{const r=await p.query("SELECT count(*)::int n FROM runtime_worker_heartbeats WHERE worker_reference=''SYNTH-WORKER-NOTIFICATION-001'' AND worker_type=''NOTIFICATION'' AND state=''READY'' AND observed_at>transaction_timestamp()-interval ''30 seconds''");if(r.rows[0].n!==1)process.exitCode=1}catch{process.exitCode=1}finally{await p.end()}})',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    <<: *runtime-security
+    depends_on:
+      gateway:
+        condition: service_healthy
+    networks: [backend]
+
+  pilot-worker:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    command: ['node', 'services/integration-gateway/dist/worker.js']
+    environment:
+      <<: *runtime-environment
+      APAAR_MODE: simulator
+      SYNTHETIC_AUTH_ENABLED: 'true'
+      WORKER_INTERVAL_MS: '250'
+      WORKER_REFERENCE: SYNTH-WORKER-PILOT-001
+      WORKER_TYPE: PILOT
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          'import(''pg'').then(async({Pool})=>{const p=new Pool({connectionString:process.env.DATABASE_URL});try{const r=await p.query("SELECT count(*)::int n FROM runtime_worker_heartbeats WHERE worker_reference=''SYNTH-WORKER-PILOT-001'' AND worker_type=''PILOT'' AND state=''READY'' AND observed_at>transaction_timestamp()-interval ''30 seconds''");if(r.rows[0].n!==1)process.exitCode=1}catch{process.exitCode=1}finally{await p.end()}})',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    <<: *runtime-security
+    depends_on:
+      gateway:
+        condition: service_healthy
+    networks: [backend]
+
+  portal:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    command: ['node', 'services/integration-gateway/dist/portal-server.js']
+    environment:
+      GATEWAY_ORIGIN: http://gateway:8080
+      NODE_ENV: development
+      PORTAL_DIRECTORY: apps/institution-portal/dist
+      PORTAL_HOST: 0.0.0.0
+      PORTAL_PORT: '4173'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:4173/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    ports:
+      - '127.0.0.1:5173:4173'
+    <<: *runtime-security
+    depends_on:
+      gateway:
+        condition: service_healthy
+      batch-worker:
+        condition: service_healthy
+      notification-worker:
+        condition: service_healthy
+      outbox-worker:
+        condition: service_healthy
+      pilot-worker:
+        condition: service_healthy
+    networks: [frontend, backend]
+
+networks:
+  frontend:
+    internal: false
+  backend:
+    internal: true
+
 volumes:
   apaar-postgres-data:

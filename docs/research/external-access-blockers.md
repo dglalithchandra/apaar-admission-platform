@@ -24,6 +24,8 @@ The Stage 5 local gateway does not resolve these authority gates. It proves the 
 
 Stage 7B completes the synthetic execution mechanics but does not reduce these authority requirements. `PRODUCTION_AUTHORITY_GRANTED` remains `MANUAL_REVIEW`; there is no real-institution membership, production identity adapter, legal-basis approval, named real operational owner or authorised rollout decision in the repository.
 
+The integrated reference deployment closes the local wiring gap only. Its synthetic role sessions, deterministic seed, embedded provider simulator, local notification handling and unsigned verification evidence are test facilities—not substitutes for any owner/input in this register.
+
 ## Inputs that must never be pasted into chat or committed
 
 Real APAAR/Aadhaar values, names with dates of birth, mobile numbers, emails, production tokens, client secrets, private certificates, HSM material and unredacted institutional exports.

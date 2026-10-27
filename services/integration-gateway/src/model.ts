@@ -214,6 +214,24 @@ export interface ExistingServiceTransportPort {
   ): Promise<GatewayTransportResponse>;
 }
 
+export interface OperationalEvent {
+  readonly aggregateReference: string;
+  readonly aggregateType: string;
+  readonly eventId: string;
+  readonly eventType: string;
+  readonly occurredAt: string;
+  readonly payload: Readonly<Record<string, unknown>>;
+  readonly sequence: number;
+}
+
+export interface OperationalEventStreamPort {
+  list(
+    principal: Principal,
+    afterSequence: number,
+    limit: number,
+  ): Promise<readonly OperationalEvent[]>;
+}
+
 export interface GatewayTransportResponse {
   readonly body: unknown;
   readonly contentType?: 'application/json' | 'text/csv';

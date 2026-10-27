@@ -1,4 +1,5 @@
-import { useState, type JSX } from 'react';
+import { useEffect, useState, type JSX } from 'react';
+import type { PilotClient, PilotSnapshot } from './pilot-types.js';
 
 export type PilotPreviewState =
   | 'LOADING'
@@ -113,11 +114,38 @@ const INSTITUTIONS = [
 ] as const;
 
 export function PilotWorkspace({
+  client,
   mode,
 }: {
+  readonly client?: PilotClient | undefined;
   readonly mode: 'INSTITUTION' | 'AICTE' | 'UNAVAILABLE';
 }): JSX.Element {
-  const [state, setState] = useState<PilotPreviewState>('READY');
+  const [state, setState] = useState<PilotPreviewState>(client === undefined ? 'READY' : 'LOADING');
+  const [snapshot, setSnapshot] = useState<PilotSnapshot | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  useEffect(() => {
+    if (client === undefined || mode === 'UNAVAILABLE') return;
+    let active = true;
+    setState('LOADING');
+    setLoadError(null);
+    void client
+      .load(mode)
+      .then((value) => {
+        if (!active) return;
+        setSnapshot(value);
+        setState(value.state);
+      })
+      .catch(() => {
+        if (!active) return;
+        setState('FAILED');
+        setLoadError(
+          'The connected pilot control plane could not be loaded. No state was changed.',
+        );
+      });
+    return (): void => {
+      active = false;
+    };
+  }, [client, mode]);
   if (mode === 'UNAVAILABLE') {
     return (
       <div className="error-summary" role="alert">
@@ -153,10 +181,20 @@ export function PilotWorkspace({
         </span>
       </div>
 
+      {loadError !== null && (
+        <div className="error-summary" role="alert">
+          <strong>Pilot data unavailable</strong>
+          <p>{loadError}</p>
+        </div>
+      )}
+
       <section aria-labelledby="pilot-state-heading" className="panel pilot-state-panel">
         <div className="section-heading">
           <div>
-            <p className="step">SYNTH-EXECUTION-PORTAL-001 · version 8</p>
+            <p className="step">
+              {snapshot?.executionReference ?? 'SYNTH-EXECUTION-PORTAL-001'} · version{' '}
+              {snapshot?.version ?? 8}
+            </p>
             <h2 id="pilot-state-heading">{current.title}</h2>
           </div>
           <span className={`status status--${state.toLowerCase()}`}>
@@ -164,25 +202,27 @@ export function PilotWorkspace({
           </span>
         </div>
         <p aria-live="polite">{current.detail}</p>
-        <div
-          aria-label="Preview execution states"
-          className="integration-actions pilot-state-actions"
-          role="group"
-        >
-          {STATES.map((value) => (
-            <button
-              aria-pressed={state === value}
-              className="button button--secondary"
-              key={value}
-              onClick={() => {
-                setState(value);
-              }}
-              type="button"
-            >
-              Preview {value.toLowerCase().replace('_', ' ')}
-            </button>
-          ))}
-        </div>
+        {client === undefined && (
+          <div
+            aria-label="Preview execution states"
+            className="integration-actions pilot-state-actions"
+            role="group"
+          >
+            {STATES.map((value) => (
+              <button
+                aria-pressed={state === value}
+                className="button button--secondary"
+                key={value}
+                onClick={() => {
+                  setState(value);
+                }}
+                type="button"
+              >
+                Preview {value.toLowerCase().replace('_', ' ')}
+              </button>
+            ))}
+          </div>
+        )}
       </section>
 
       <section aria-label="Execution summary" className="pilot-scorecard">
@@ -236,7 +276,17 @@ export function PilotWorkspace({
             <span className="status status--manual_review">authority review</span>
           </div>
           <div className="pilot-institution-grid">
-            {INSTITUTIONS.map(([reference, label, readiness, campuses]) => (
+            {(
+              snapshot?.institutions.map(
+                (item) =>
+                  [
+                    item.reference,
+                    item.label,
+                    item.readiness,
+                    `${String(item.campusCount)} campus${item.campusCount === 1 ? '' : 'es'}`,
+                  ] as const,
+              ) ?? INSTITUTIONS
+            ).map(([reference, label, readiness, campuses]) => (
               <article key={reference}>
                 <span>{reference}</span>
                 <strong>{label}</strong>

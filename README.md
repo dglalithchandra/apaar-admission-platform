@@ -6,7 +6,7 @@ The product goal is not merely to collect a spreadsheet. It must make every admi
 
 ## Current status
 
-The foundation through Build Stage 4 is complete:
+The engineering foundation through the integrated synthetic Stage 7B reference deployment is complete:
 
 - authoritative public sources and local copies are indexed;
 - the current public APAAR verification contract is saved for adapter work;
@@ -32,6 +32,8 @@ The Stage 6 local assurance baseline is implemented: digest-pinned hardened cont
 Stage 7A controlled-rollout readiness is implemented locally with immutable pilot configurations, tenant-scoped membership, effective windows, fail-closed capabilities and kill switches, maker-checker activation, readiness gates, synthetic migration/reconciliation receipts, pilot telemetry and accessible institution/AICTE pilot views. No real institution is activated and no real student data is used. See the [pilot operations runbook](docs/operations/pilot-operations-runbook.md).
 
 Stage 7B now adds a production-shaped synthetic execution control plane: immutable lifecycle versions, a 17-check go/no-go package, PostgreSQL worker checkpoints and leases, incident/recovery, tenant-safe evidence, controlled expansion, atomic completion reporting and expanded institution/AICTE views. Production authority deliberately remains `MANUAL_REVIEW`; this is not a claim that a real pilot occurred. See the [Stage 7B assurance report](docs/assurance/stage-7b-synthetic-pilot-execution.md).
+
+The integrated reference deployment now connects the production portal bundle, gateway composition root, PostgreSQL repositories, durable asynchronous work, outbox publication and operational event replay. `npm run test:full-system` exercises one real cross-service synthetic journey and restart persistence. See [ADR-0020](docs/architecture/decisions/ADR-0020-integrated-reference-composition.md) and the [integrated deployment assurance](docs/assurance/stage-7b-integrated-reference-deployment.md).
 
 No real student data, credentials or official AICTE/APAAR branding are present.
 
@@ -73,7 +75,7 @@ No real student data, credentials or official AICTE/APAAR branding are present.
 
 Git, Node.js and npm are available on this machine. Docker Desktop uses its WSL 2 Linux engine, and the framework-independent TypeScript domain kernel, application-service tests and PostgreSQL Testcontainers suite run locally. See [local toolchain status](docs/delivery/local-toolchain-status.md).
 
-Use `npm run check` for formatting, linting, types, coverage, contracts and builds. Use `npm run test:integration:postgres` for Stage 2, `npm run test:e2e:batch` for Stage 3, `npm run test:e2e:casework` for Stage 4, `npm run test:e2e:gateway` for the integration boundary, `npm run test:e2e:pilot` for Stage 7A and `npm run test:e2e:pilot-execution` for Stage 7B. Stage 6 adds `npm run test:container`, `npm run test:recovery`, `npm run security:scan`, `npm run security:licenses` and `npm run security:sbom`; the declared load workload runs against the local compose stack with `npm run load:smoke`. The portal runs locally with `npm run dev -w @apaar-platform/institution-portal`.
+Use `npm run check` for formatting, linting, types, coverage, contracts and builds. Use `npm run test:integration:postgres` for Stage 2, `npm run test:e2e:batch` for Stage 3, `npm run test:e2e:casework` for Stage 4, `npm run test:e2e:gateway` for the integration boundary, `npm run test:e2e:pilot` for Stage 7A and `npm run test:e2e:pilot-execution` for Stage 7B. `npm run test:full-system` builds the complete compose topology and proves the connected journey. Stage 6 adds `npm run test:container`, `npm run test:recovery`, `npm run security:scan`, `npm run security:licenses` and `npm run security:sbom`; the declared load workload runs against the local compose stack with `npm run load:smoke`. The integrated portal is available at `http://127.0.0.1:5173` after `docker compose -f infra/compose/compose.yaml up --build --wait`.
 
 ## Data safety
 

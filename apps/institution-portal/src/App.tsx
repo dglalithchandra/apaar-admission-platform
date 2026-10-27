@@ -7,6 +7,7 @@ import { DemoPortalClient } from './demo-client.js';
 import { IntegrationWorkspace } from './IntegrationWorkspace.js';
 import type { IntegrationClient } from './integration-types.js';
 import { PilotWorkspace } from './PilotWorkspace.js';
+import type { PilotClient } from './pilot-types.js';
 import type { PortalBatch, PortalClient, PortalRow, RowStatus } from './types.js';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -94,12 +95,14 @@ export function App({
   client,
   caseworkClient,
   integrationClient,
+  pilotClient,
   initialRole = 'INSTITUTION_OPERATOR',
   initialView = 'BATCH',
 }: {
   readonly client?: PortalClient;
   readonly caseworkClient?: CaseworkClient;
   readonly integrationClient?: IntegrationClient;
+  readonly pilotClient?: PilotClient;
   readonly initialRole?: PreviewRole;
   readonly initialView?: 'BATCH' | 'CASEWORK' | 'INTEGRATIONS' | 'PILOT';
 }): JSX.Element {
@@ -288,6 +291,7 @@ export function App({
             <IntegrationWorkspace client={governedIntegrationClient} />
           ) : view === 'PILOT' ? (
             <PilotWorkspace
+              client={pilotClient}
               mode={
                 role === 'INSTITUTION_OPERATOR' || role === 'INSTITUTION_ADMINISTRATOR'
                   ? 'INSTITUTION'

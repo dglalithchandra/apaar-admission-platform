@@ -38,3 +38,7 @@ One authenticated gateway terminates versioned HTTP requests and converts truste
 ## Stage 6 assurance boundary
 
 Container, load, recovery, accessibility and security-supply-chain harnesses exercise this architecture locally without adding another source of regulatory truth. Metrics and security events observe decisions but cannot make them. The compose stack is a disposable synthetic environment; production hosting, secrets, cryptographic authority, national traffic targets and recovery objectives remain outside the repository until their accountable owners provide them.
+
+## Integrated synthetic reference boundary
+
+The reference compose deployment is the first complete executable composition: portal → authenticated gateway → existing domain/application services → PostgreSQL, with durable batch/outbox/notification/pilot work returning operational state to the portal. A same-origin proxy keeps the browser boundary realistic. Synthetic sessions and the identity simulator are conspicuously local-only; the production configuration fails closed if they are enabled. Event delivery is recoverable from the transactional outbox and a monotonic PostgreSQL cursor, while source records remain authoritative.

@@ -8,6 +8,7 @@ import { IntegrationClientError } from './integration-types.js';
 interface HttpIntegrationClientOptions {
   readonly baseUrl: string;
   readonly fetch: typeof fetch;
+  readonly providerToken?: () => Promise<string | null>;
   readonly token: () => Promise<string | null>;
 }
 
@@ -45,11 +46,16 @@ export class HttpIntegrationClient implements IntegrationClient {
   }
 
   public requestProviderOutage(): Promise<{ readonly status: 'TEMPORARILY_UNAVAILABLE' }> {
-    return this.request('/v1/academic-identity/verifications', {
-      body: JSON.stringify({ academicIdentity: 'SYNTH-OUTAGE', purpose: 'ADMISSION_LINKING' }),
-      headers: { 'content-type': 'application/json' },
-      method: 'POST',
-    });
+    return this.request(
+      '/v1/academic-identity/verifications',
+      {
+        body: JSON.stringify({ academicIdentity: 'SYNTH-OUTAGE', purpose: 'ADMISSION_LINKING' }),
+        headers: { 'content-type': 'application/json' },
+        method: 'POST',
+      },
+      true,
+      this.options.providerToken,
+    );
   }
 
   public simulateProviderOutage(): Promise<{ readonly status: 'TEMPORARILY_UNAVAILABLE' }> {
@@ -78,8 +84,13 @@ export class HttpIntegrationClient implements IntegrationClient {
     );
   }
 
-  private async request<T>(path: string, init: RequestInit, authenticated = true): Promise<T> {
-    const token = authenticated ? await this.options.token() : null;
+  private async request<T>(
+    path: string,
+    init: RequestInit,
+    authenticated = true,
+    tokenProvider?: () => Promise<string | null>,
+  ): Promise<T> {
+    const token = authenticated ? await (tokenProvider ?? this.options.token)() : null;
     const headers = new Headers(init.headers);
     if (token !== null) headers.set('authorization', `Bearer ${token}`);
     const response = await this.options.fetch(`${this.options.baseUrl}${path}`, {

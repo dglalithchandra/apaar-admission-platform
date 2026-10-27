@@ -16,6 +16,7 @@ Confirm requester organization, purpose, claim allow-list and consent/legal basi
 
 - `npm run test:coverage -w @apaar-platform/integration-gateway`
 - `npm run test:e2e:gateway`
+- `npm run test:full-system`
 - `npm run validate:contracts`
 - `npm run test:container`
 - `npm run test:recovery`
@@ -24,3 +25,5 @@ Confirm requester organization, purpose, claim allow-list and consent/legal basi
 - `npm run security:sbom`
 
 For local load assurance, start the compose stack, run `npm run load:smoke`, inspect auditor-only `/metrics`, and always remove the synthetic database volume afterward. Production incident and rollback handling is in `deployment-and-rollback.md`; recovery gates are in `disaster-recovery.md`.
+
+The complete reference environment is started with `docker compose -f infra/compose/compose.yaml up --build --wait` and is served at `http://127.0.0.1:5173`. Gateway port `8080` is loopback-only for diagnostics and load tests. Synthetic reference-session endpoints exist only when `SYNTHETIC_AUTH_ENABLED=true`; startup must fail if that mode is combined with a production environment. If `/ready` degrades, inspect PostgreSQL connectivity and all four worker heartbeat types before accepting new batches.

@@ -18,6 +18,11 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "reference:migrate": "tsx src/migrate-reference.ts",
+    "reference:reset": "tsx src/reset-reference.ts",
+    "reference:seed": "tsx src/seed-reference.ts",
+    "reference:worker": "tsx src/worker.ts",
+    "start:portal": "node dist/portal-server.js",
     "start": "node dist/server.js",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
@@ -30,6 +35,7 @@
     "@apaar-platform/admission-application": "0.1.0",
     "@apaar-platform/admission-casework": "0.1.0",
     "@apaar-platform/admission-domain": "0.1.0",
+    "@apaar-platform/batch-ingestion": "0.1.0",
     "pg": "8.23.1"
   },
   "devDependencies": {

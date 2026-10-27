@@ -3,6 +3,12 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    proxy: {
+      '/v1': 'http://127.0.0.1:8080',
+      '/ready': 'http://127.0.0.1:8080',
+    },
+  },
   test: {
     coverage: {
       provider: 'v8',

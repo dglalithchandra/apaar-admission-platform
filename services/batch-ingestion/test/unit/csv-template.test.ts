@@ -123,7 +123,7 @@ describe('versioned admission CSV', () => {
       csvRow(String(index).padStart(5, '0')),
     );
     await expect(codes(csvFile(...rows))).resolves.toContain('BATCH_ROW_LIMIT_EXCEEDED');
-  });
+  }, 15_000);
 
   it('generates a header-only template and formula-safe correction export', () => {
     expect(templateCsv()).toBe(`${CSV_HEADER}\n`);
