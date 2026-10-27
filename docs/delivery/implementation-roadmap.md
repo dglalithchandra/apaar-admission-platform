@@ -71,3 +71,12 @@ The integration increment connects that control plane to the earlier admission, 
 ## Stage 7C — authorised supervised pilot (blocked pending authority)
 
 Obtain accountable approvals and protected inputs, select a representative real cohort, complete privacy/security review, validate production SLOs and run the approved supervised pilot. Reconcile every result, pause on stop conditions and expand only after authority review. A national launch remains a migration programme, not a single deployment.
+
+## SIH final scoring increment — Admission Policy Digital Twin (implemented locally)
+
+The regulator workspace now includes an advisory, side-effect-free policy sandbox. An 84-record
+synthetic cohort is replayed against approved baseline capacity and an adjustable proposal by the
+same source-confirmed admission engine. The experience reports accepted-seat change, excess
+prevention, manual review, category distribution, machine-readable rule deltas and explainable
+row-level transitions. It does not write to the live ledger or represent a proposed scenario as
+approved policy. See [ADR-0021](../architecture/decisions/ADR-0021-advisory-policy-digital-twin.md).

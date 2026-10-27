@@ -8,6 +8,7 @@ COPY contracts ./contracts
 COPY scripts ./scripts
 RUN npm ci --ignore-scripts \
   && npm run build -w @apaar-platform/admission-domain \
+  && npm run build -w @apaar-platform/policy-digital-twin \
   && npm run build -w @apaar-platform/admission-application \
   && npm run build -w @apaar-platform/batch-ingestion \
   && npm run build -w @apaar-platform/admission-casework \
@@ -24,6 +25,7 @@ COPY services/admission-casework/package.json ./services/admission-casework/pack
 COPY services/admission-domain/package.json ./services/admission-domain/package.json
 COPY services/batch-ingestion/package.json ./services/batch-ingestion/package.json
 COPY services/integration-gateway/package.json ./services/integration-gateway/package.json
+COPY services/policy-digital-twin/package.json ./services/policy-digital-twin/package.json
 RUN npm ci --omit=dev --ignore-scripts \
   && npm cache clean --force \
   && apk add --no-cache --upgrade \

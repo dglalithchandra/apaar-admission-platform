@@ -35,6 +35,12 @@ Stage 7B now adds a production-shaped synthetic execution control plane: immutab
 
 The integrated reference deployment now connects the production portal bundle, gateway composition root, PostgreSQL repositories, durable asynchronous work, outbox publication and operational event replay. `npm run test:full-system` exercises one real cross-service synthetic journey and restart persistence. See [ADR-0020](docs/architecture/decisions/ADR-0020-integrated-reference-composition.md) and the [integrated deployment assurance](docs/assurance/stage-7b-integrated-reference-deployment.md).
 
+The final SIH scoring increment adds an Admission Policy Digital Twin. AICTE personas can change
+three proposed capacity levers and immediately replay the same 84-record synthetic cohort through
+the existing policy engine. Baseline/proposal outcomes, access change, protected rejections,
+category distribution and explainable decision transitions are shown without writing to the live
+ledger. See [ADR-0021](docs/architecture/decisions/ADR-0021-advisory-policy-digital-twin.md).
+
 No real student data, credentials or official AICTE/APAAR branding are present.
 
 ## Read first

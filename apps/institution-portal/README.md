@@ -16,3 +16,9 @@ The interaction tests exercise keyboard-addressable semantic controls, loading/e
 Stage 4 browser acceptance passed on 26 October 2026 at 390 × 844 and 1440 × 900. It covers keyboard-only entry to Casework and the complete synthetic institution → reviewer → checker → implementation-receipt journey. The acceptance run found and fixed a narrow-width navigation defect; the responsive navigation now remains available below 900 px. Browser console warnings and errors were empty after the repair. A formal WCAG 2.2 AA audit with assistive technologies remains Stage 6 assurance work.
 
 The Stage 5 integration-assurance view uses `IntegrationClient`. Its default demo adapter visibly presents disabled providers, unauthenticated/forbidden states, provider outage and a minimal synthetic verification receipt. `HttpIntegrationClient` targets the local gateway and obtains bearer material only through an injected token provider; it does not store credentials. The role-preview selector and all acceptance receipts remain synthetic.
+
+The AICTE-only Policy Lab is an Admission Policy Digital Twin. It runs an 84-record synthetic
+cohort through the unchanged source-confirmed admission engine twice: once against the approved
+baseline and once against adjustable proposed capacity. It displays access, safety and category
+distribution deltas with row-level explanations. The browser computation is an advisory synthetic
+demonstrator; it never changes the admission ledger or claims authority for a proposed policy.

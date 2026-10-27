@@ -8,6 +8,7 @@ import { IntegrationWorkspace } from './IntegrationWorkspace.js';
 import type { IntegrationClient } from './integration-types.js';
 import { PilotWorkspace } from './PilotWorkspace.js';
 import type { PilotClient } from './pilot-types.js';
+import { PolicyTwinWorkspace } from './PolicyTwinWorkspace.js';
 import type { PortalBatch, PortalClient, PortalRow, RowStatus } from './types.js';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -104,7 +105,7 @@ export function App({
   readonly integrationClient?: IntegrationClient;
   readonly pilotClient?: PilotClient;
   readonly initialRole?: PreviewRole;
-  readonly initialView?: 'BATCH' | 'CASEWORK' | 'INTEGRATIONS' | 'PILOT';
+  readonly initialView?: 'BATCH' | 'CASEWORK' | 'INTEGRATIONS' | 'PILOT' | 'POLICY_TWIN';
 }): JSX.Element {
   const batchClient = useMemo(() => client ?? new DemoPortalClient(), [client]);
   const governedCaseworkClient = useMemo(
@@ -115,7 +116,9 @@ export function App({
     () => integrationClient ?? new DemoIntegrationClient(),
     [integrationClient],
   );
-  const [view, setView] = useState<'BATCH' | 'CASEWORK' | 'INTEGRATIONS' | 'PILOT'>(initialView);
+  const [view, setView] = useState<'BATCH' | 'CASEWORK' | 'INTEGRATIONS' | 'PILOT' | 'POLICY_TWIN'>(
+    initialView,
+  );
   const [role, setRole] = useState<PreviewRole>(initialRole);
   const caseworkRole: CaseworkRole | null =
     role === 'INSTITUTION_ADMINISTRATOR'
@@ -272,13 +275,26 @@ export function App({
           >
             Pilot execution
           </button>
+          <button
+            aria-current={view === 'POLICY_TWIN' ? 'page' : undefined}
+            onClick={() => {
+              setView('POLICY_TWIN');
+            }}
+            type="button"
+          >
+            Policy Lab <span className="nav-new">New</span>
+          </button>
           <div className="support-note">
             <strong>Need help?</strong>
             <span>Keep the receipt reference when contacting support.</span>
           </div>
         </nav>
         <main id="main-content">
-          {view === 'CASEWORK' ? (
+          {view === 'POLICY_TWIN' ? (
+            <PolicyTwinWorkspace
+              allowed={role === 'AICTE_REVIEWER' || role === 'AICTE_CHECKER' || role === 'AUDITOR'}
+            />
+          ) : view === 'CASEWORK' ? (
             caseworkRole === null ? (
               <div className="error-summary" role="alert">
                 <strong>Casework access is not available</strong>

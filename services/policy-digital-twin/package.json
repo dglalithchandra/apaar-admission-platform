@@ -1,0 +1,27 @@
+{
+  "name": "@apaar-platform/policy-digital-twin",
+  "version": "0.1.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "development": "./src/index.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "node -e \"const fs=require('node:fs'); for (const path of ['coverage','dist']) fs.rmSync(path,{recursive:true,force:true})\"",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc -p tsconfig.lint.json --noEmit"
+  },
+  "dependencies": {
+    "@apaar-platform/admission-domain": "0.1.0"
+  }
+}

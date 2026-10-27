@@ -67,6 +67,15 @@ async function uploadCsv(api: PortalClient): Promise<void> {
 }
 
 describe('institution batch workspace', () => {
+  it('exposes the policy digital twin only to regulator personas', async () => {
+    const user = userEvent.setup();
+    render(<App client={client()} />);
+    await user.click(screen.getByRole('button', { name: /Policy Lab/i }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Policy Lab is restricted');
+    await user.selectOptions(screen.getByLabelText('Preview role'), 'AICTE_REVIEWER');
+    expect(screen.getByRole('heading', { name: /human impact/i })).toBeInTheDocument();
+  });
+
   it('starts with an accessible empty upload workflow', () => {
     render(<App client={client()} />);
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
