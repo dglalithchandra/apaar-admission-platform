@@ -43,6 +43,16 @@ ledger. See [ADR-0021](docs/architecture/decisions/ADR-0021-advisory-policy-digi
 
 No real student data, credentials or official AICTE/APAAR branding are present.
 
+## SIH judge pack
+
+- [Judge setup and complete role-by-role walkthrough](JUDGE_GUIDE.md)
+- [Six-slide SIH 2026 presentation](docs/hackathon/APAAR_SIH_2026.pptx) and [PDF copy](docs/hackathon/APAAR_SIH_2026.pdf)
+- [Captioned local walkthrough recording](docs/hackathon/APAAR_SIH_2026_walkthrough.webm) and [spoken narration script](docs/hackathon/VIDEO_SCRIPT.md)
+- [Plain-language project guide](docs/hackathon/APAAR_Platform_Simple_Guide.pdf)
+- [Presentation research and design rationale](docs/hackathon/SIH_PRESENTATION_RESEARCH.md)
+
+The presentation preserves the SIH 2026 six-slide format. Fill the team name and team ID placeholders before submission. The recorded walkthrough is silent with on-screen captions; the separate script contains the narration for a presenter or voice-over. It shows only local synthetic records. Official identity, sign-in and signing services are not connected.
+
 ## Read first
 
 1. [Product scope](docs/product/system-scope.md)

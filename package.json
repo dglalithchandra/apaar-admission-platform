@@ -38,6 +38,8 @@
     "test:e2e:pilot": "npm run test:pilot -w @apaar-platform/integration-gateway",
     "test:e2e:pilot-execution": "npm run test:execution -w @apaar-platform/integration-gateway",
     "test:full-system": "node scripts/full-system-smoke.mjs",
+    "judge:start": "docker compose -f infra/compose/compose.yaml up --build --wait",
+    "judge:stop": "docker compose -f infra/compose/compose.yaml down",
     "test:integration:postgres": "npm run test:integration -w @apaar-platform/admission-application",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "validate:contracts": "redocly lint contracts/openapi/apaar-platform.yaml && tsx scripts/validate-json-schema.ts"
