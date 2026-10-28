@@ -1,3 +1,16 @@
+import { PostgresOversightRepository, oversightCsv } from '../../src/oversight-postgres.js';
+import {
+  ImportApprovalSnapshotService,
+  PostgresAdmissionStore,
+  SubmitAdmissionService,
+} from '@apaar-platform/admission-application';
+import { asIsoDateTime } from '@apaar-platform/admission-domain';
+import {
+  syntheticApproval,
+  syntheticCommand,
+  SyntheticReferenceGenerator,
+} from '../../../admission-application/test/fixtures.js';
+import { PostgresVerificationGrantRepository } from '../../src/verification-authorization-postgres.js';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { migrate } from '@apaar-platform/admission-application';
@@ -104,6 +117,13 @@ describe('Stage 5 PostgreSQL integration foundation', () => {
       '0007_synthetic_pilot_execution.sql',
       '0008_integrated_reference_runtime.sql',
       '0009_operational_event_reference_compatibility.sql',
+      '0010_student_identity_guards.sql',
+      '0011_verification_authorization_grants.sql',
+      '0012_verification_grant_withdrawal_atomicity.sql',
+      '0013_oversight_read_indexes.sql',
+      '0014_verification_receipt_grant_expiry.sql',
+      '0015_verified_academic_identity_bindings.sql',
+      '0016_synthetic_identity_binding_backfill.sql',
     ]);
     for (const directory of migrationDirectories)
       await expect(migrate(pool, directory)).resolves.toEqual([]);
@@ -199,6 +219,158 @@ describe('Stage 5 PostgreSQL integration foundation', () => {
     expect(imports.rows[0]?.count).toBe('1');
   });
 
+  it('reconciles real reservations, isolates institution reports and exports safe paginated rows', async () => {
+    const store = new PostgresAdmissionStore(pool);
+    await new ImportApprovalSnapshotService(store).execute({ snapshot: syntheticApproval() });
+    const command = syntheticCommand('SYNTH-OVERSIGHT-NRI', 'NRI');
+    await new SubmitAdmissionService(
+      { unitOfWork: store, clock: { now: () => asIsoDateTime('2026-08-01T09:00:00Z') } },
+      new SyntheticReferenceGenerator(),
+    ).execute(command);
+    const repository = new PostgresOversightRepository(pool);
+    const reviewer: Principal = { ...integrator, roles: ['AICTE_REVIEWER'] };
+    const report = await repository.read(reviewer, '2026-27');
+    const ordinary = report.rows.find((row) => row.bucket === 'ORDINARY');
+    expect(ordinary).toMatchObject({
+      approvedCapacity: 60,
+      counterUsed: 1,
+      ledgerUsed: 1,
+      drift: 0,
+      acceptedRecords: 1,
+    });
+    expect(report.nextOffset).toBeNull();
+    expect(report.summary.activeAdmissionRecords).toBe(1);
+    expect(report.institutionCapacities.length).toBeGreaterThan(0);
+    expect(JSON.stringify(report)).not.toContain(command.admission.studentKey);
+    const own = await repository.read(
+      {
+        ...reviewer,
+        roles: ['INSTITUTION_OPERATOR'],
+        institutionId: command.admission.institutionId,
+      },
+      '2026-27',
+    );
+    expect(own.rows.length).toBeGreaterThan(0);
+    const other = await repository.read(
+      { ...reviewer, roles: ['INSTITUTION_OPERATOR'], institutionId: 'SYNTH-INSTITUTION-001' },
+      '2026-27',
+    );
+    expect(other.rows).toHaveLength(0);
+    await expect(
+      repository.read({ ...reviewer, roles: ['AUTHORIZED_VERIFIER'] }, '2026-27'),
+    ).rejects.toMatchObject({ code: 'ACTION_FORBIDDEN' });
+    await expect(
+      repository.read(
+        { ...reviewer, roles: ['INSTITUTION_OPERATOR'], institutionId: null },
+        '2026-27',
+      ),
+    ).rejects.toMatchObject({ code: 'TENANT_SCOPE_REQUIRED' });
+    await expect(repository.read(reviewer, 'SYNTH-INVALID-YEAR')).rejects.toMatchObject({
+      code: 'OVERSIGHT_FILTER_INVALID',
+    });
+    await expect(repository.read(reviewer, '2026-27', -1)).rejects.toMatchObject({
+      code: 'OVERSIGHT_FILTER_INVALID',
+    });
+    await pool.query(
+      "UPDATE capacity_allocations SET used_quantity=used_quantity+1 WHERE allocation_code='ORDINARY'",
+    );
+    expect(
+      (await repository.read(reviewer, '2026-27')).rows.find((row) => row.bucket === 'ORDINARY')
+        ?.drift,
+    ).toBe(1);
+    const csv = oversightCsv(report.rows);
+    expect(csv).toContain('allocationReference');
+    expect(csv).toContain('SYNTH-INST-0001');
+    if (ordinary === undefined) throw new Error('Synthetic ordinary allocation was missing.');
+    expect(
+      oversightCsv([
+        { ...ordinary, courseReference: '=SYNTH-FORMULA', approvalReference: 'SYNTH-QUOTE"VALUE' },
+      ]),
+    ).toContain("'=SYNTH-FORMULA");
+    expect(oversightCsv([{ ...ordinary, approvalReference: 'SYNTH-QUOTE"VALUE' }])).toContain(
+      'SYNTH-QUOTE""VALUE',
+    );
+  });
+
+  it('persists grant withdrawal, revokes existing receipts and serializes competing issuance', async () => {
+    const reference = 'SYNTH-GRANT-LIFECYCLE';
+    const grants = new PostgresVerificationGrantRepository(pool);
+    expect(await grants.find('SYNTH-GRANT-UNKNOWN')).toBeNull();
+    await pool.query(
+      `INSERT INTO verification_authorization_grants(reference,issuer_reference,payload)
+      VALUES($1,'SYNTH-ISSUER',$2)`,
+      [
+        reference,
+        {
+          reference,
+          kind: 'CONSENT',
+          admissionReference: 'SYNTH-ADMISSION',
+          institutionReference: 'SYNTH-INSTITUTION',
+          recipientOrganisation: 'SYNTH-RECIPIENT',
+          purpose: 'SYNTH-PURPOSE',
+          claims: ['ADMISSION_EXISTS'],
+          validFrom: '2026-01-01T00:00:00Z',
+          expiresAt: '2027-01-01T00:00:00Z',
+        },
+      ],
+    );
+    expect(await grants.find(reference)).toMatchObject({ revoked: false });
+    const store = new PostgresIntegrationStore(pool);
+    const receipt: VerificationReceipt = {
+      algorithm: 'SYNTHETIC-SHA256-NOT-FOR-PRODUCTION',
+      keyId: 'SYNTH-KEY',
+      signature: 'a'.repeat(64),
+      claims: { ADMISSION_EXISTS: true },
+      purpose: 'SYNTH-PURPOSE',
+      requesterOrganisation: 'SYNTH-RECIPIENT',
+      legalBasisReference: reference,
+      issuedAt: '2026-10-26T12:00:00Z',
+      expiresAt: '2026-10-26T12:15:00Z',
+      status: 'ACTIVE',
+      verificationReference: 'SYNTH-GRANT-RECEIPT-FIRST',
+    };
+    await store.save('SYNTH-GRANT-IDEMPOTENCY-FIRST', 'a'.repeat(64), receipt);
+    const results = await Promise.allSettled([
+      store.save('SYNTH-GRANT-IDEMPOTENCY-RACE', 'b'.repeat(64), {
+        ...receipt,
+        verificationReference: 'SYNTH-GRANT-RECEIPT-RACE',
+      }),
+      pool.query(
+        `INSERT INTO verification_grant_withdrawals(grant_reference,actor_reference,reason)
+        VALUES($1,'SYNTH-SUBJECT','SYNTH-WITHDRAWAL')`,
+        [reference],
+      ),
+    ]);
+    expect(results[1].status).toBe('fulfilled');
+    expect(await grants.find(reference)).toMatchObject({ revoked: true });
+    expect(await store.find('SYNTH-GRANT-IDEMPOTENCY-FIRST')).toMatchObject({
+      receipt: { status: 'REVOKED' },
+    });
+    const active = await pool.query(
+      `SELECT r.verification_reference FROM verification_receipts r
+      WHERE r.legal_basis_reference=$1 AND NOT EXISTS(SELECT 1 FROM verification_receipt_revocations v WHERE v.verification_reference=r.verification_reference)`,
+      [reference],
+    );
+    expect(active.rows).toHaveLength(0);
+    await expect(
+      store.save('SYNTH-GRANT-IDEMPOTENCY-AFTER', 'c'.repeat(64), {
+        ...receipt,
+        verificationReference: 'SYNTH-GRANT-RECEIPT-AFTER',
+      }),
+    ).rejects.toMatchObject({ constraint: 'verification_grant_active' });
+    await expect(
+      pool.query(
+        `UPDATE verification_authorization_grants SET issuer_reference='SYNTH-OTHER' WHERE reference=$1`,
+        [reference],
+      ),
+    ).rejects.toThrow();
+    await expect(
+      pool.query('DELETE FROM verification_grant_withdrawals WHERE grant_reference=$1', [
+        reference,
+      ]),
+    ).rejects.toThrow();
+  });
+
   it('stores verification receipts immutably and exposes append-only revocation status', async () => {
     const store = new PostgresIntegrationStore(pool);
     const receipt: VerificationReceipt = {
@@ -214,6 +386,24 @@ describe('Stage 5 PostgreSQL integration foundation', () => {
       status: 'ACTIVE',
       verificationReference: 'SYNTH-VERIFICATION-001',
     };
+    await pool.query(
+      `INSERT INTO verification_authorization_grants(reference,issuer_reference,payload)
+      VALUES($1,'SYNTH-ISSUER',$2)`,
+      [
+        receipt.legalBasisReference,
+        {
+          reference: receipt.legalBasisReference,
+          kind: 'LEGAL_BASIS',
+          admissionReference: null,
+          institutionReference: 'SYNTH-INSTITUTION-001',
+          recipientOrganisation: receipt.requesterOrganisation,
+          purpose: receipt.purpose,
+          claims: ['ADMISSION_EXISTS'],
+          validFrom: '2026-01-01T00:00:00Z',
+          expiresAt: '2027-01-01T00:00:00Z',
+        },
+      ],
+    );
     await store.save('SYNTH-IDEMPOTENCY-001', 'b'.repeat(64), receipt);
     await expect(store.find('SYNTH-IDEMPOTENCY-001')).resolves.toMatchObject({
       receipt: { status: 'ACTIVE' },

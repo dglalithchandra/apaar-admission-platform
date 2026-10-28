@@ -1,5 +1,6 @@
 import {
   asAcademicYear,
+  emptyCapacityUsage,
   asAdmissionCommandId,
   asApprovalSnapshotId,
   asCampusId,
@@ -227,5 +228,51 @@ describe('policy digital twin', () => {
       pmUspyInstitutionUsed: 1,
       tfwUsed: 1,
     });
+  });
+});
+
+describe('simulation assumptions', () => {
+  it('uses occupied seats without mutating input and exposes ordering sensitivity', () => {
+    const base = approval('SYNTH-OCCUPIED', 2, 1);
+    const occupied = { ...emptyCapacityUsage(), ordinaryUsed: 1 };
+    const input = {
+      baselineApproval: base,
+      cohort: {
+        reference: 'SYNTH-ORDER-COHORT',
+        admissions: [
+          admission('SYNTH-ORDER-A', 'ORDINARY'),
+          admission('SYNTH-ORDER-B', 'ORDINARY'),
+        ],
+      },
+      scenario: {
+        reference: 'SYNTH-ORDER-SCENARIO',
+        name: 'SYNTH-CONTROL',
+        rationale: 'SYNTH-ORDER-CHECK',
+        proposedApproval: base,
+      },
+      initialUsage: occupied,
+    };
+    const result = simulatePolicyScenario(input);
+    expect(result.baseline.accepted).toBe(1);
+    expect(result.finalBaselineUsage.ordinaryUsed).toBe(2);
+    expect(occupied.ordinaryUsed).toBe(1);
+    expect(result.orderingSensitivity.baselineChangedStudents).toBe(2);
+    expect(result.orderingSensitivity.proposedChangedStudents).toBe(2);
+    expect(result.orderingSensitivity.reversedBaselineAccepted).toBe(1);
+    expect(() =>
+      simulatePolicyScenario({ ...input, initialUsage: { ...occupied, ordinaryUsed: -1 } }),
+    ).toThrow('non-negative');
+    expect(() =>
+      simulatePolicyScenario({ ...input, initialUsage: { ...occupied, ordinaryUsed: 0.5 } }),
+    ).toThrow('whole');
+    expect(() =>
+      simulatePolicyScenario({
+        ...input,
+        cohort: {
+          reference: 'SYNTH-DUPLICATE-COHORT',
+          admissions: [input.cohort.admissions[0]!, input.cohort.admissions[0]!],
+        },
+      }),
+    ).toThrow('repeated student');
   });
 });

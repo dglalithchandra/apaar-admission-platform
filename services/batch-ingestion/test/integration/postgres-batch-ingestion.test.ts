@@ -170,7 +170,7 @@ describe('PostgreSQL batch ingestion journey', () => {
   it('migrates over Stage 2 and repeats without reapplying', async () => {
     expect(initiallyApplied).toEqual(['0002_student_batch_ingestion.sql']);
     await expect(migrate(pool, batchMigrations)).resolves.toEqual([]);
-    expect(await tableCount('schema_migrations')).toBe(2);
+    expect(await tableCount('schema_migrations')).toBe(4);
   });
 
   it('runs a valid upload through identity verification and the Stage 2 admission service', async () => {

@@ -1,3 +1,5 @@
+import { ADMISSION_VALIDATION_PROFILE_VERSION } from '../model.js';
+import { setTimeout as delay } from 'node:timers/promises';
 import type {
   ApprovalSnapshot,
   ApprovalSnapshotQuery,
@@ -200,6 +202,38 @@ function requiredAllocations(admission: StudentAdmission): readonly AllocationCo
 class PostgresAdmissionTransaction implements AdmissionTransaction {
   public constructor(private readonly client: PoolClient) {}
 
+  public async classifyStudentConflict(
+    admission: StudentAdmission,
+  ): Promise<'NONE' | 'EXACT' | 'POTENTIAL'> {
+    // A write conflict forces SERIALIZABLE retries to acquire a fresh snapshot, including across tenants.
+    await this.client.query(
+      `INSERT INTO student_identity_guards(student_key, revision) VALUES ($1, 1)
+       ON CONFLICT(student_key) DO UPDATE SET revision = student_identity_guards.revision + 1`,
+      [admission.identityVerification.canonicalStudentKey ?? admission.studentKey],
+    );
+    const versions = await this.client.query<{ present: boolean }>(
+      "SELECT to_regclass('public.admission_versions') IS NOT NULL AS present",
+    );
+    const active =
+      versions.rows[0]?.present === true
+        ? "a.lifecycle_status = 'ACCEPTED' AND NOT EXISTS (SELECT 1 FROM admission_versions v WHERE v.admission_id=a.id AND v.is_current=true AND v.lifecycle_status <> 'ACTIVE')"
+        : "a.lifecycle_status = 'ACCEPTED'";
+    const result = await this.client.query<{ exact: boolean }>(
+      `SELECT a.institution_id=$3 AND a.course_id=$4 AS exact FROM admissions a
+       LEFT JOIN admission_identity_bindings b ON b.admission_id=a.id
+       WHERE (b.canonical_identity_key=$1 OR (b.admission_id IS NULL AND a.student_key=$1) OR (a.student_key=$5 AND a.institution_id=$3)) AND a.academic_year_code=$2 AND ${active}`,
+      [
+        admission.identityVerification.canonicalStudentKey ?? admission.studentKey,
+        admission.academicYear,
+        admission.institutionId,
+        admission.courseId,
+        admission.studentKey,
+      ],
+    );
+    if (result.rows.some((row) => row.exact)) return 'EXACT';
+    return result.rows.length > 0 ? 'POTENTIAL' : 'NONE';
+  }
+
   public async findEffective(query: ApprovalSnapshotQuery): Promise<ApprovalSnapshot | null> {
     const result = await this.client.query<ApprovalRow>(
       `${ALLOCATION_SELECT}
@@ -350,6 +384,19 @@ class PostgresAdmissionTransaction implements AdmissionTransaction {
         outcome.occurredAt,
       ],
     );
+    if (
+      admission.identityVerification.status === 'VERIFIED' &&
+      admission.identityVerification.canonicalStudentKey !== undefined
+    ) {
+      await this.client.query(
+        `INSERT INTO admission_identity_bindings(admission_id,canonical_identity_key,provider_reference) VALUES($1,$2,$3)`,
+        [
+          r.admissionId,
+          admission.identityVerification.canonicalStudentKey,
+          admission.identityVerification.providerRequestReference,
+        ],
+      );
+    }
     await this.client.query(
       `INSERT INTO admission_decisions (
         id, admission_id, version, outcome, lifecycle_status, approval_snapshot_id,
@@ -436,6 +483,7 @@ class PostgresAdmissionTransaction implements AdmissionTransaction {
         {
           approvalSnapshotId: outcome.decision.approvalSnapshotId,
           outcome: outcome.decision.outcome,
+          validationProfileVersion: ADMISSION_VALIDATION_PROFILE_VERSION,
           ruleCodes: outcome.decision.findings.map((finding) => finding.code),
           rulesetVersion: outcome.decision.rulesetVersion,
         },
@@ -479,7 +527,7 @@ async function runIdempotentOnClient(
     `INSERT INTO idempotency_records (
        id, institution_id, idempotency_key, request_hash, status
      ) VALUES ($1,$2,$3,$4,'PROCESSING')
-     ON CONFLICT (institution_id, idempotency_key) DO NOTHING`,
+     ON CONFLICT DO NOTHING`,
     [
       options.idempotencyRecordId,
       options.institutionId,
@@ -537,7 +585,7 @@ export class PostgresAdmissionStore implements AdmissionUnitOfWork, ApprovalSnap
     options: IdempotentTransactionOptions,
     work: (transaction: AdmissionTransaction) => Promise<AdmissionSubmissionResult>,
   ): Promise<AdmissionSubmissionResult> {
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
       const client = await this.pool.connect();
       try {
         await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
@@ -546,7 +594,8 @@ export class PostgresAdmissionStore implements AdmissionUnitOfWork, ApprovalSnap
         return result;
       } catch (error) {
         await client.query('ROLLBACK').catch(() => undefined);
-        if (isRetryableTransactionFailure(error) && attempt < 3) {
+        if (isRetryableTransactionFailure(error) && attempt < 5) {
+          await delay(Math.min(100, 5 * 2 ** (attempt - 1)) + Math.floor(Math.random() * 5));
           continue;
         }
         throw error;

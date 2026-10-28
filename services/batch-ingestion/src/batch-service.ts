@@ -243,6 +243,12 @@ export class BatchWorker {
         return;
       }
 
+      const boundIdentity =
+        identity.status === 'VERIFIED' &&
+        (identity.canonicalStudentKey === undefined || !identity.providerRequestReference?.trim())
+          ? { ...identity, status: 'MANUAL_REVIEW' as const }
+          : identity;
+
       const stable = createHash('sha256')
         .update(`${row.batchId}:${row.input.recordKey}`)
         .digest('hex');
@@ -255,7 +261,7 @@ export class BatchWorker {
           commandId: asAdmissionCommandId(`BATCH-${stable}`),
           courseId: row.input.courseId,
           eligibilityEvidence: row.input.eligibilityEvidence,
-          identityVerification: identity,
+          identityVerification: boundIdentity,
           institutionId: row.input.institutionId,
           lateralCapacitySource: row.input.lateralCapacitySource,
           lifecycleStatus: 'DRAFT',
@@ -269,7 +275,7 @@ export class BatchWorker {
           idempotencyKey: `ROW-${stable}`,
           institutionId: row.input.institutionId,
           reason: row.reason,
-          requestHash: admissionHash(row, identity.status),
+          requestHash: admissionHash(row, boundIdentity.status),
           requestReference: `${row.requestReference}-ROW-${String(row.rowNumber)}`,
         },
       });

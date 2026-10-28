@@ -21,6 +21,7 @@ export interface AuthenticationPort {
 }
 
 export type GatewayAction =
+  | 'OVERSIGHT_READ'
   | 'ADMISSION_WRITE'
   | 'BATCH_WRITE'
   | 'RECORD_READ'
@@ -188,6 +189,7 @@ export interface AdmissionFactsPort {
 }
 
 export interface SigningPort {
+  exportPublicKey?(): { readonly keyId: string; readonly pem: string };
   sign(
     payload: string,
   ): Promise<{ readonly algorithm: string; readonly keyId: string; readonly signature: string }>;
@@ -234,7 +236,7 @@ export interface OperationalEventStreamPort {
 
 export interface GatewayTransportResponse {
   readonly body: unknown;
-  readonly contentType?: 'application/json' | 'text/csv';
+  readonly contentType?: 'application/json' | 'text/csv' | 'text/html';
   readonly headers?: Readonly<Record<string, string>>;
   readonly status: number;
 }

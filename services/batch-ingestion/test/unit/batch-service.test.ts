@@ -266,6 +266,49 @@ describe('BatchWorker and queries', () => {
     );
   });
 
+  it.each(['missing-key', 'missing-provenance'] as const)(
+    'routes verified evidence with %s to manual review',
+    async (missing) => {
+      const execute = vi.fn(async () => acceptedResult());
+      const canonical = await new DeterministicAcademicIdentityVerifier().verify({
+        academicIdentityReference: 'SYNTH-IDENTITY-VERIFIED',
+        correlationReference: 'SYNTH-CORRELATION',
+        studentKey: admissionRow('0001').studentKey,
+      });
+      const { canonicalStudentKey: _key, ...withoutKey } = canonical;
+      const identity: AcademicIdentityVerifierPort = {
+        verify: async () =>
+          missing === 'missing-key' ? withoutKey : { ...canonical, providerRequestReference: null },
+      };
+      await new BatchWorker({
+        admissions: { execute },
+        clock: { now: () => '2026-08-01T09:00:00.000Z' },
+        identity,
+        repository: repository({
+          claimRows: async () => [
+            {
+              actorReference: 'SYNTH-ACTOR-0001',
+              attemptCount: 1,
+              batchId: 'SYNTH-BATCH-0001',
+              input: admissionRow('0001'),
+              reason: 'SYNTHETIC_UPLOAD',
+              requestReference: 'SYNTH-REQUEST-0001',
+              rowId: 'SYNTH-ROW-0001',
+              rowNumber: 2,
+            },
+          ],
+        }),
+      }).processNext('SYNTH-BATCH-0001', 'SYNTH-WORKER-0001');
+      expect(execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          admission: expect.objectContaining({
+            identityVerification: expect.objectContaining({ status: 'MANUAL_REVIEW' }),
+          }),
+        }),
+      );
+    },
+  );
+
   it('defers transient identity failures before the last attempt', async () => {
     const defer = vi.fn(async () => undefined);
     const row = admissionRow('0001');

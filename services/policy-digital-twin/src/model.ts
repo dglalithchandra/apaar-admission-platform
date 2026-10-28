@@ -48,6 +48,14 @@ export interface RuleImpact {
 }
 
 export interface SimulationResult {
+  readonly initialUsage: CapacityUsage;
+  readonly orderingSensitivity: {
+    readonly baselineChangedStudents: number;
+    readonly proposedChangedStudents: number;
+    readonly reversedBaselineAccepted: number;
+    readonly reversedProposedAccepted: number;
+    readonly method: 'FORWARD_VERSUS_REVERSE_ONLY';
+  };
   readonly simulationReference: string;
   readonly cohortReference: string;
   readonly scenarioReference: string;

@@ -3,6 +3,9 @@ import { fileURLToPath } from 'node:url';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import {
   asApprovalSnapshotId,
+  asInstitutionId,
+  asCampusId,
+  asCourseId,
   asIsoDate,
   asIsoDateTime,
   type Clock,
@@ -10,6 +13,7 @@ import {
 import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { IdempotencyConflictError } from '../../src/errors.js';
+import { syntheticAcademicIdentityKey } from '../../src/synthetic-identity-key.js';
 import type { ReferenceGenerator } from '../../src/model.js';
 import { assertNonProductionTestDatabase } from '../../src/postgres/config.js';
 import { migrate } from '../../src/postgres/migrations.js';
@@ -92,9 +96,90 @@ describe('PostgreSQL admission persistence', () => {
   });
 
   it('migrates an empty PostgreSQL database and is repeatable', async () => {
-    expect(initiallyApplied).toEqual(['0001_admission_registry.sql']);
+    expect(initiallyApplied).toEqual([
+      '0001_admission_registry.sql',
+      '0010_student_identity_guards.sql',
+      '0015_verified_academic_identity_bindings.sql',
+    ]);
     await expect(migrate(pool, migrationsDirectory)).resolves.toEqual([]);
-    await expect(count('schema_migrations')).resolves.toBe(1);
+    await expect(count('schema_migrations')).resolves.toBe(3);
+  });
+
+  it('blocks the same student with fresh request identifiers and reserves one seat', async () => {
+    const first = syntheticCommand('SYNTH-IDENTITY-FIRST');
+    await service.execute(first);
+    const next = syntheticCommand('SYNTH-IDENTITY-SECOND');
+    const result = await service.execute({
+      ...next,
+      admission: { ...next.admission, studentKey: first.admission.studentKey },
+    });
+    expect(result.decision.outcome).toBe('REJECT');
+    expect(result.decision.findings.at(-1)?.code).toBe('STUDENT_ADMISSION_DUPLICATE');
+    expect(await allocation('ORDINARY')).toBe(1);
+    expect(await count('business_audit_events')).toBe(2);
+  });
+
+  it('serializes concurrent same-student submissions with distinct request keys', async () => {
+    const base = syntheticCommand('SYNTH-IDENTITY-RACE-A');
+    const identityVerification = {
+      ...base.admission.identityVerification,
+      canonicalStudentKey: syntheticAcademicIdentityKey('SYNTH-SHARED-IDENTITY'),
+    };
+    const first = { ...base, admission: { ...base.admission, identityVerification } };
+    const second = syntheticCommand('SYNTH-IDENTITY-RACE-B');
+    const results = await Promise.all([
+      service.execute(first),
+      service.execute({
+        ...second,
+        admission: { ...second.admission, identityVerification },
+      }),
+    ]);
+    expect(results.filter((r) => r.decision.outcome === 'ACCEPT')).toHaveLength(1);
+    expect(results.filter((r) => r.decision.outcome === 'REJECT')).toHaveLength(1);
+    expect(await allocation('ORDINARY')).toBe(1);
+  });
+
+  it('routes cross-institution student overlap to review without leaking the other institution', async () => {
+    const command = syntheticCommand('SYNTH-CROSS-INSTITUTION-A');
+    const identityVerification = {
+      ...command.admission.identityVerification,
+      canonicalStudentKey: syntheticAcademicIdentityKey('SYNTH-CROSS-IDENTITY'),
+    };
+    const first = { ...command, admission: { ...command.admission, identityVerification } };
+    await service.execute(first);
+    const base = syntheticApproval();
+    const institutionId = asInstitutionId('SYNTH-INSTITUTION-OTHER');
+    const campusId = asCampusId('SYNTH-CAMPUS-OTHER');
+    const courseId = asCourseId('SYNTH-COURSE-OTHER');
+    await store.importSnapshot({
+      snapshot: {
+        ...base,
+        id: asApprovalSnapshotId('SYNTH-APPROVAL-OTHER'),
+        importBatchReference: 'SYNTH-IMPORT-OTHER',
+        sourceHash: 'SYNTH-SOURCE-OTHER',
+        sourceRecordId: 'SYNTH-RECORD-OTHER',
+        institution: { ...base.institution, id: institutionId },
+        campus: { ...base.campus, id: campusId, institutionId },
+        course: { ...base.course, id: courseId, campusId },
+      },
+    });
+    const next = syntheticCommand('SYNTH-CROSS-INSTITUTION-B');
+    const result = await service.execute({
+      ...next,
+      context: { ...next.context, institutionId },
+      admission: {
+        ...next.admission,
+        institutionId,
+        campusId,
+        courseId,
+        identityVerification,
+      },
+    });
+    expect(result.decision.outcome).toBe('MANUAL_REVIEW');
+    expect(result.decision.reservation).toBeNull();
+    expect(result.decision.findings.at(-1)?.code).toBe('STUDENT_ENROLMENT_OVERLAP_REVIEW');
+    expect(JSON.stringify(result)).not.toContain(first.admission.institutionId);
+    expect(await count('capacity_reservations')).toBe(1);
   });
 
   it('persists an accepted ordinary admission, exact decision, audit and outbox atomically', async () => {

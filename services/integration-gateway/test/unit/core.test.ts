@@ -461,6 +461,7 @@ describe('approval, notification and verification services', () => {
       new SyntheticSigningAdapter(),
       clock,
       () => 'SYNTH-VERIFICATION-001',
+      { assertAllowed: () => Promise.resolve({ expiresAt: '2026-10-26T12:05:00.000Z' }) },
     );
     const input = {
       admissionReference: 'SYNTH-REGISTRATION-001',
@@ -471,6 +472,7 @@ describe('approval, notification and verification services', () => {
       requestedClaims: ['ADMISSION_EXISTS', 'CURRENT_STATUS'] as const,
     };
     const receipt = await service.create(input, verifier);
+    expect(receipt.expiresAt).toBe('2026-10-26T12:05:00.000Z');
     expect(receipt).toMatchObject({
       claims: { ADMISSION_EXISTS: true, CURRENT_STATUS: 'ACCEPTED' },
       status: 'ACTIVE',
@@ -520,6 +522,7 @@ describe('approval, notification and verification services', () => {
       new SyntheticSigningAdapter(),
       mutableClock,
       () => 'SYNTH-VERIFICATION-STATUS-001',
+      { assertAllowed: () => Promise.resolve({ expiresAt: '2027-01-01T00:00:00.000Z' }) },
     );
     await service.create(
       {

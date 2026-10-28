@@ -24,12 +24,13 @@ function Metric({
 }
 
 export function PolicyTwinWorkspace({ allowed }: { readonly allowed: boolean }): JSX.Element {
+  const [ordinaryOccupied, setOrdinaryOccupied] = useState(0);
   const [ordinaryIntake, setOrdinaryIntake] = useState(66);
   const [nriLimit, setNriLimit] = useState(7);
   const [tfwCapacity, setTfwCapacity] = useState(9);
   const result = useMemo(
-    () => runPolicyTwin({ nriLimit, ordinaryIntake, tfwCapacity }),
-    [nriLimit, ordinaryIntake, tfwCapacity],
+    () => runPolicyTwin({ nriLimit, ordinaryIntake, tfwCapacity }, ordinaryOccupied),
+    [nriLimit, ordinaryIntake, tfwCapacity, ordinaryOccupied],
   );
   const maximum = Math.max(result.baseline.accepted, result.proposed.accepted, 1);
 
@@ -47,7 +48,7 @@ export function PolicyTwinWorkspace({ allowed }: { readonly allowed: boolean }):
       <div className="page-heading twin-heading">
         <div>
           <p className="eyebrow">Admission Policy Digital Twin</p>
-          <h1>See the human impact before changing a rule</h1>
+          <h1>Compare admission outcomes before changing a rule</h1>
           <p>
             Replay one synthetic cohort through the approved baseline and a proposed policy. The
             live admission ledger is never touched.
@@ -56,6 +57,14 @@ export function PolicyTwinWorkspace({ allowed }: { readonly allowed: boolean }):
         <span className="twin-safety">Advisory only · zero live writes</span>
       </div>
 
+      <aside className="twin-note" aria-label="Simulation assumptions">
+        <strong>Scenario evidence, not a forecast.</strong> This replay starts with{' '}
+        {ordinaryOccupied} occupied ordinary seats; other capacity buckets start empty and uses a
+        fixed synthetic cohort in file order. Reversing that order changes{' '}
+        {result.orderingSensitivity.baselineChangedStudents} baseline outcomes and{' '}
+        {result.orderingSensitivity.proposedChangedStudents} proposed outcomes. This compares two
+        orders only and does not establish fairness or merit priority.
+      </aside>
       <section aria-labelledby="scenario-heading" className="panel twin-controls">
         <div className="section-heading">
           <div>
@@ -65,15 +74,34 @@ export function PolicyTwinWorkspace({ allowed }: { readonly allowed: boolean }):
           <button
             className="button button--secondary"
             onClick={() => {
+              setOrdinaryOccupied(0);
               setOrdinaryIntake(66);
               setNriLimit(7);
               setTfwCapacity(9);
             }}
             type="button"
           >
-            Winning scenario
+            Example scenario
           </button>
         </div>
+        <label>
+          Existing ordinary admissions
+          <input
+            type="number"
+            min="0"
+            max={BASELINE_LEVERS.ordinaryIntake}
+            step="1"
+            value={ordinaryOccupied}
+            onChange={(event) => {
+              const value = Number(event.currentTarget.value);
+              setOrdinaryOccupied(
+                Number.isFinite(value)
+                  ? Math.max(0, Math.min(BASELINE_LEVERS.ordinaryIntake, Math.floor(value)))
+                  : 0,
+              );
+            }}
+          />
+        </label>
         <div className="twin-levers">
           <label>
             <span>
@@ -134,7 +162,7 @@ export function PolicyTwinWorkspace({ allowed }: { readonly allowed: boolean }):
         />
         <Metric
           detail="still safely blocked"
-          label="Excess prevented"
+          label="Capacity rejections"
           value={String(result.preventedExcessAdmissions)}
         />
         <Metric

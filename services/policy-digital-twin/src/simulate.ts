@@ -80,8 +80,12 @@ function incrementUsage(
   return next;
 }
 
-function run(approval: ApprovalSnapshot, admissions: readonly StudentAdmission[]): RunResult {
-  let usage = emptyCapacityUsage();
+function run(
+  approval: ApprovalSnapshot,
+  admissions: readonly StudentAdmission[],
+  initialUsage: CapacityUsage,
+): RunResult {
+  let usage = { ...initialUsage };
   const decisions: RunDecision[] = [];
   for (const admission of admissions) {
     const decision = evaluateAdmissionPolicy({
@@ -173,9 +177,33 @@ export function simulatePolicyScenario(input: {
   readonly baselineApproval: ApprovalSnapshot;
   readonly cohort: SimulationCohort;
   readonly scenario: PolicyScenario;
+  readonly initialUsage?: CapacityUsage;
 }): SimulationResult {
-  const baseline = run(input.baselineApproval, input.cohort.admissions);
-  const proposed = run(input.scenario.proposedApproval, input.cohort.admissions);
+  const initialUsage = input.initialUsage ?? emptyCapacityUsage();
+  if (Object.values(initialUsage).some((value) => !Number.isSafeInteger(value) || value < 0)) {
+    throw new TypeError('Initial occupied capacity must contain non-negative whole numbers.');
+  }
+  const keys = new Set<string>();
+  for (const admission of input.cohort.admissions) {
+    if (keys.has(admission.studentKey))
+      throw new TypeError(
+        'Resolve repeated student identities before simulating this single-course cohort.',
+      );
+    keys.add(admission.studentKey);
+  }
+  const baseline = run(input.baselineApproval, input.cohort.admissions, initialUsage);
+  const proposed = run(input.scenario.proposedApproval, input.cohort.admissions, initialUsage);
+  const reversed = [...input.cohort.admissions].reverse();
+  const reverseBaseline = run(input.baselineApproval, reversed, initialUsage);
+  const reverseProposed = run(input.scenario.proposedApproval, reversed, initialUsage);
+  const changes = (forward: RunResult, backward: RunResult): number => {
+    const outcomes = new Map(
+      backward.decisions.map((item) => [item.admission.studentKey, item.decision.outcome]),
+    );
+    return forward.decisions.filter(
+      (item) => outcomes.get(item.admission.studentKey) !== item.decision.outcome,
+    ).length;
+  };
   const baselineTotals = totals(baseline);
   const proposedTotals = totals(proposed);
   const transitions = baseline.decisions.flatMap((item, index) => {
@@ -193,6 +221,14 @@ export function simulatePolicyScenario(input: {
   });
 
   return {
+    initialUsage: { ...initialUsage },
+    orderingSensitivity: {
+      baselineChangedStudents: changes(baseline, reverseBaseline),
+      proposedChangedStudents: changes(proposed, reverseProposed),
+      reversedBaselineAccepted: totals(reverseBaseline).accepted,
+      reversedProposedAccepted: totals(reverseProposed).accepted,
+      method: 'FORWARD_VERSUS_REVERSE_ONLY',
+    },
     acceptedSeatDelta: proposedTotals.accepted - baselineTotals.accepted,
     baseline: baselineTotals,
     baselineApprovalSnapshotId: input.baselineApproval.id,

@@ -1,3 +1,4 @@
+import { syntheticAcademicIdentityKey } from '@apaar-platform/admission-application';
 import { asIsoDateTime } from '@apaar-platform/admission-domain';
 import type {
   AcademicIdentityVerifierPort,
@@ -35,21 +36,26 @@ export class DeterministicAcademicIdentityVerifier implements AcademicIdentityVe
     request: Parameters<AcademicIdentityVerifierPort['verify']>[0],
   ): ReturnType<AcademicIdentityVerifierPort['verify']> {
     const reference = request.academicIdentityReference;
-    const status = reference.includes('NOT-FOUND')
-      ? 'NOT_FOUND'
-      : reference.includes('MISMATCH')
-        ? 'MISMATCH'
-        : reference.includes('NOT-ELIGIBLE')
-          ? 'NOT_ELIGIBLE_FOR_APAAR'
-          : reference.includes('MANUAL')
-            ? 'MANUAL_REVIEW'
-            : reference.includes('RATE-LIMITED')
-              ? 'RATE_LIMITED'
-              : reference.includes('OUTAGE')
-                ? 'TEMPORARILY_UNAVAILABLE'
-                : 'VERIFIED';
+    const status = !reference.startsWith('SYNTH-')
+      ? 'UNVERIFIED'
+      : reference.includes('NOT-FOUND')
+        ? 'NOT_FOUND'
+        : reference.includes('MISMATCH')
+          ? 'MISMATCH'
+          : reference.includes('NOT-ELIGIBLE')
+            ? 'NOT_ELIGIBLE_FOR_APAAR'
+            : reference.includes('MANUAL')
+              ? 'MANUAL_REVIEW'
+              : reference.includes('RATE-LIMITED')
+                ? 'RATE_LIMITED'
+                : reference.includes('OUTAGE')
+                  ? 'TEMPORARILY_UNAVAILABLE'
+                  : 'VERIFIED';
     return Promise.resolve({
       checkedAt: asIsoDateTime('2026-08-01T08:00:00.000Z'),
+      ...(status === 'VERIFIED'
+        ? { canonicalStudentKey: syntheticAcademicIdentityKey(reference) }
+        : {}),
       providerContractVersion: 'SYNTH-IDENTITY-SIMULATOR-1',
       providerRequestReference: `SYNTH-PROVIDER-${request.correlationReference}`,
       status,

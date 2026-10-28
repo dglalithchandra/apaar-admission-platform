@@ -73,7 +73,9 @@ describe('institution batch workspace', () => {
     await user.click(screen.getByRole('button', { name: /Policy Lab/i }));
     expect(screen.getByRole('alert')).toHaveTextContent('Policy Lab is restricted');
     await user.selectOptions(screen.getByLabelText('Preview role'), 'AICTE_REVIEWER');
-    expect(screen.getByRole('heading', { name: /human impact/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /compare admission outcomes/i }),
+    ).toBeInTheDocument();
   });
 
   it('starts with an accessible empty upload workflow', () => {

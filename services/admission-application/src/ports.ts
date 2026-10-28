@@ -3,6 +3,7 @@ import type {
   ApprovalSnapshotRepository,
   CapacityUsage,
   Clock,
+  StudentAdmission,
 } from '@apaar-platform/admission-domain';
 import type {
   AdmissionSubmissionResult,
@@ -12,6 +13,7 @@ import type {
 } from './model.js';
 
 export interface AdmissionTransaction extends ApprovalSnapshotRepository {
+  classifyStudentConflict(admission: StudentAdmission): Promise<'NONE' | 'EXACT' | 'POTENTIAL'>;
   loadCapacityUsageForUpdate(approval: ApprovalSnapshot): Promise<CapacityUsage>;
   persistOutcome(outcome: PersistAdmissionOutcome): Promise<void>;
 }

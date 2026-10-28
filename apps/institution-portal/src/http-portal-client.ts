@@ -29,6 +29,18 @@ function portalBatch(value: BatchSummaryResponse): PortalBatch {
 export class HttpPortalClient implements PortalClient {
   public constructor(private readonly options: HttpPortalClientOptions) {}
 
+  public async printableRecord(admissionReference: string): Promise<void> {
+    const html = await this.text(
+      `/v1/admissions/${encodeURIComponent(admissionReference)}/record.html`,
+    );
+    const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'niyamsetu-admission-record.html';
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   public async templateCsv(): Promise<string> {
     return this.text('/v1/admission-batches/templates/1.0.csv');
   }

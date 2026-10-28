@@ -142,9 +142,7 @@ describe('Stage 7B synthetic pilot execution PostgreSQL', () => {
     const versions = await pool.query<{ version: string }>(
       'SELECT version FROM schema_migrations ORDER BY version',
     );
-    expect(versions.rows.at(-1)?.version).toBe(
-      '0009_operational_event_reference_compatibility.sql',
-    );
+    expect(versions.rows.at(-1)?.version).toBe('0016_synthetic_identity_binding_backfill.sql');
     for (const directory of migrationDirectories)
       await expect(migrate(pool, directory)).resolves.toEqual([]);
   });

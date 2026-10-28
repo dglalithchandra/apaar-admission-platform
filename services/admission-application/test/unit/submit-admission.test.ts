@@ -32,6 +32,10 @@ const clock: Clock = { now: () => asIsoDateTime('2026-08-01T09:00:00.000Z') };
 
 class FakeTransaction implements AdmissionTransaction {
   public persisted: PersistAdmissionOutcome[] = [];
+  public conflict: 'NONE' | 'EXACT' | 'POTENTIAL' = 'NONE';
+  public classifyStudentConflict(): Promise<'NONE' | 'EXACT' | 'POTENTIAL'> {
+    return Promise.resolve(this.conflict);
+  }
 
   public constructor(
     private readonly approval: ApprovalSnapshot | null,
@@ -74,6 +78,41 @@ class FakeUnitOfWork implements AdmissionUnitOfWork {
 }
 
 describe('SubmitAdmissionService', () => {
+  it('does not downgrade a capacity rejection when a possible overlap also exists', async () => {
+    const transaction = new FakeTransaction(
+      syntheticApproval(),
+      syntheticUsage({ ordinaryUsed: 60 }),
+    );
+    transaction.conflict = 'POTENTIAL';
+    const service = new SubmitAdmissionService(
+      { clock, unitOfWork: new FakeUnitOfWork(transaction) },
+      new SyntheticReferenceGenerator(),
+    );
+    const result = await service.execute(syntheticCommand('SYNTH-CAPACITY-OVERLAP'));
+    expect(result.decision.outcome).toBe('REJECT');
+    expect(result.decision.reservation).toBeNull();
+  });
+
+  it.each(['EXACT', 'POTENTIAL'] as const)(
+    'persists %s student conflicts without consuming capacity',
+    async (conflict) => {
+      const transaction = new FakeTransaction(syntheticApproval(), syntheticUsage());
+      transaction.conflict = conflict;
+      const service = new SubmitAdmissionService(
+        { clock, unitOfWork: new FakeUnitOfWork(transaction) },
+        new SyntheticReferenceGenerator(),
+      );
+      const result = await service.execute(syntheticCommand(`UNIT-CONFLICT-${conflict}`));
+      expect(result.decision.outcome).toBe(conflict === 'EXACT' ? 'REJECT' : 'MANUAL_REVIEW');
+      expect(result.decision.reservation).toBeNull();
+      expect(result.admissionReference).toBeNull();
+      expect(transaction.persisted).toHaveLength(1);
+      expect(result.decision.findings.at(-1)?.code).toBe(
+        conflict === 'EXACT' ? 'STUDENT_ADMISSION_DUPLICATE' : 'STUDENT_ENROLMENT_OVERLAP_REVIEW',
+      );
+    },
+  );
+
   it('evaluates and persists an accepted admission with stable references', async () => {
     const transaction = new FakeTransaction(syntheticApproval(), syntheticUsage());
     const service = new SubmitAdmissionService(

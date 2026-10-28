@@ -56,6 +56,7 @@ export type AcademicIdentityVerificationStatus =
   | 'UNVERIFIED';
 
 export interface AcademicIdentityVerification {
+  readonly canonicalStudentKey?: StudentKey;
   readonly status: AcademicIdentityVerificationStatus;
   readonly checkedAt: IsoDateTime;
   readonly providerContractVersion: string;

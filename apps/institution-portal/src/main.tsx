@@ -1,3 +1,4 @@
+import { HttpOversightClient } from './oversight-client.js';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.js';
@@ -25,6 +26,7 @@ const caseworkTokens = {
 createRoot(root).render(
   <StrictMode>
     <App
+      oversightClient={new HttpOversightClient(gateway, browserFetch)}
       client={
         new HttpPortalClient({ baseUrl: gateway, fetch: browserFetch, token: institutionToken })
       }

@@ -6,3 +6,4 @@ export * from './postgres/config.js';
 export * from './postgres/migrations.js';
 export * from './postgres/pool.js';
 export * from './postgres/postgres-admission-store.js';
+export * from './synthetic-identity-key.js';

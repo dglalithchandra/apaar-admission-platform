@@ -485,6 +485,34 @@ export class PostgresCaseworkRepository implements CaseRepositoryPort {
       const targetApproval = await this.findTargetApprovalForLock(client, command);
       await this.lockCapacityAllocations(client, reservations, targetApproval);
 
+      // This source transition is provisional inside the transaction. A failed target
+      // rolls it back; source seats remain reserved until target acceptance below.
+      await this.replaceSourceVersion(
+        client,
+        sourceVersion,
+        command.sourceAdmissionVersionId,
+        command.caseId,
+        'TRANSFERRED',
+        {
+          ...sourceVersion.snapshot,
+          lifecycleStatus: 'TRANSFERRED',
+          targetAdmissionId: command.targetReferences.admissionId,
+          transferredByCaseId: command.caseId,
+        },
+      );
+      const sourceBinding = await client.query<{ canonical_identity_key: string }>(
+        'SELECT canonical_identity_key FROM admission_identity_bindings WHERE admission_id=$1',
+        [source.id],
+      );
+      const canonicalKey = sourceBinding.rows[0]?.canonical_identity_key;
+      if (
+        canonicalKey !== undefined &&
+        target.identityVerification.canonicalStudentKey !== canonicalKey
+      ) {
+        throw new CaseworkConflictError(
+          'Transfer identity evidence must retain the verified source identity.',
+        );
+      }
       const targetResult = await new SubmitAdmissionService(
         {
           clock: {
@@ -506,19 +534,7 @@ export class PostgresCaseworkRepository implements CaseRepositoryPort {
         command.caseId,
         reservations,
       );
-      await this.replaceSourceVersion(
-        client,
-        sourceVersion,
-        command.sourceAdmissionVersionId,
-        command.caseId,
-        'TRANSFERRED',
-        {
-          ...sourceVersion.snapshot,
-          lifecycleStatus: 'TRANSFERRED',
-          targetAdmissionId: targetResult.admissionId,
-          transferredByCaseId: command.caseId,
-        },
-      );
+
       await client.query(
         `INSERT INTO admission_transfers(
           id,case_id,source_admission_id,target_admission_id,target_institution_id,

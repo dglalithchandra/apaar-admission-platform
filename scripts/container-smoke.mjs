@@ -1,3 +1,4 @@
+import './prepare-local-signing-key.mjs';
 import { spawnSync } from 'node:child_process';
 
 const compose = ['compose', '-f', 'infra/compose/compose.yaml'];

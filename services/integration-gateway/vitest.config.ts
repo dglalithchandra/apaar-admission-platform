@@ -8,6 +8,8 @@ export default defineConfig({
         'src/pilot-execution-postgres.ts',
         'src/pilot-postgres.ts',
         'src/postgres-store.ts',
+        'src/oversight-postgres.ts',
+        'src/verification-authorization-postgres.ts',
         'src/migrate-reference.ts',
         'src/portal-server.ts',
         'src/postgres-delegated-transport.ts',

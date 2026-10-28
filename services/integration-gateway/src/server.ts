@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { Ed25519SigningAdapter } from './ed25519-signing.js';
 import { readDatabaseConfig } from '@apaar-platform/admission-application';
 import { loadGatewayConfig } from './config.js';
 import { GatewayHttpApplication } from './http.js';
@@ -16,7 +18,16 @@ if (!config.syntheticAuthentication) {
 
 const pool = createReferencePool(readDatabaseConfig(process.env));
 const applied = await runReferenceMigrations(pool);
-const runtime = createReferenceRuntime(pool, config);
+const keyPath = process.env['LOCAL_SIGNING_KEY_PATH'];
+if (!keyPath)
+  throw new Error(
+    'LOCAL_SIGNING_KEY_PATH is required. Run npm run local:keys before starting the local stack.',
+  );
+const runtime = createReferenceRuntime(
+  pool,
+  config,
+  new Ed25519SigningAdapter(readFileSync(keyPath, 'utf8')),
+);
 const application = new GatewayHttpApplication(runtime.dependencies, {
   allowedOrigins: config.allowedOrigins,
   host: config.host,

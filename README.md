@@ -1,4 +1,8 @@
-# APAAR Admission Registry and Verification Platform
+# NiyamSetu | Admission Integrity & Policy Registry
+
+**Verify the record. Apply the rule. Protect the seat.**
+
+Independent software for **Smart India Hackathon 2026, problem statement 26263: APAAR ID-Based Student Data Management & Verification**. NiyamSetu is not a government-owned or officially endorsed product. APAAR identity results and other authority-controlled connections are simulated or disabled until authorised access is available.
 
 This repository is the production-oriented foundation for AICTE problem statement 26263. It is deliberately separate from the earlier research reports and from the unrelated `deposit-assure` project.
 
@@ -35,7 +39,7 @@ Stage 7B now adds a production-shaped synthetic execution control plane: immutab
 
 The integrated reference deployment now connects the production portal bundle, gateway composition root, PostgreSQL repositories, durable asynchronous work, outbox publication and operational event replay. `npm run test:full-system` exercises one real cross-service synthetic journey and restart persistence. See [ADR-0020](docs/architecture/decisions/ADR-0020-integrated-reference-composition.md) and the [integrated deployment assurance](docs/assurance/stage-7b-integrated-reference-deployment.md).
 
-The final SIH scoring increment adds an Admission Policy Digital Twin. AICTE personas can change
+The advisory Admission Policy Digital Twin supports scenario comparison. AICTE personas can change
 three proposed capacity levers and immediately replay the same 84-record synthetic cohort through
 the existing policy engine. Baseline/proposal outcomes, access change, protected rejections,
 category distribution and explainable decision transitions are shown without writing to the live
@@ -46,12 +50,24 @@ No real student data, credentials or official AICTE/APAAR branding are present.
 ## SIH judge pack
 
 - [Judge setup and complete role-by-role walkthrough](JUDGE_GUIDE.md)
-- [Six-slide SIH 2026 presentation](docs/hackathon/APAAR_SIH_2026.pptx) and [PDF copy](docs/hackathon/APAAR_SIH_2026.pdf)
-- [Captioned local walkthrough recording](docs/hackathon/APAAR_SIH_2026_walkthrough.webm) and [spoken narration script](docs/hackathon/VIDEO_SCRIPT.md)
-- [Plain-language project guide](docs/hackathon/APAAR_Platform_Simple_Guide.pdf)
+- [Six-slide NiyamSetu SIH 2026 presentation](docs/hackathon/NiyamSetu_SIH_2026.pptx) (editable PowerPoint)
+- [Legacy recorded walkthrough](docs/hackathon/APAAR_SIH_2026_walkthrough.webm) (shows the earlier Admission Registry name) and [current NiyamSetu narration script](docs/hackathon/VIDEO_SCRIPT.md)
+- [Legacy plain-language project guide](docs/hackathon/APAAR_Platform_Simple_Guide.pdf) (shows the earlier Admission Registry name)
 - [Presentation research and design rationale](docs/hackathon/SIH_PRESENTATION_RESEARCH.md)
 
-The presentation preserves the SIH 2026 six-slide format. Fill the team name and team ID placeholders before submission. The recorded walkthrough is silent with on-screen captions; the separate script contains the narration for a presenter or voice-over. It shows only local synthetic records. Official identity, sign-in and signing services are not connected.
+The rebranded presentation preserves the SIH 2026 six-slide format and changes only its product name and cover tagline; the original chart and other package entries are retained. Fill the team name and team ID placeholders before submission. The linked PDF, screenshots and silent walkthrough are earlier Admission Registry assets and must be regenerated before presenting them as NiyamSetu materials. The recording uses only local synthetic records. Official identity, sign-in and signing services are not connected.
+
+## Current verification improvements
+
+- Stable student-key conflicts are checked across submissions and institutions; potential simultaneous enrolment goes to review rather than being declared unlawful.
+- Verification requires a stored scoped grant. Withdrawal and receipt issuance are coordinated in PostgreSQL; independent Ed25519 receipts remain verifiable after restart.
+- Capacity oversight compares counters with the reservation/release ledger and provides scoped, paginated reporting.
+- Policy Lab exposes occupied seats and ordering sensitivity; its fixed synthetic cohort is scenario evidence, not a forecast.
+- [Operator study materials](docs/research/operator-study/README.md) are prepared but no study has been conducted.
+- [Synthetic printable admission record](docs/hackathon/NiyamSetu_Synthetic_Admission_Record.html) demonstrates separate student-ID and academic-identity fields.
+- `npm run benchmark:postgres` runs a disposable pinned PostgreSQL contention/restart experiment. [Recorded evidence](docs/assurance/evidence/postgres-capacity-benchmark.json) includes the actual conditions and limitations.
+
+`npm run judge:start` prepares an independent local signing key before starting Docker. For a direct `docker compose ... up`, run `npm run local:keys` first. Keep the ignored `private-inputs/local-signing/` folder with the local database; replacing its key makes earlier signatures unverifiable. This is a local issuer, not an official signing service.
 
 ## Read first
 
@@ -80,7 +96,7 @@ The presentation preserves the SIH 2026 six-slide format. Fill the team name and
 
 ## Working assumptions
 
-- The working product name is neutral until branding permission is documented.
+- NiyamSetu is the independent working product name; the project does not claim official AICTE or APAAR ownership or endorsement.
 - The first implementation is a modular monolith with strict domain boundaries, not a fleet of premature microservices.
 - APAAR is an external identity authority. Its contract is accessed through a replaceable adapter and a local simulator.
 - Approval and capacity data are effective-dated snapshots. Historical admission decisions must remain reproducible.
@@ -96,3 +112,7 @@ Use `npm run check` for formatting, linting, types, coverage, contracts and buil
 ## Data safety
 
 Do not commit APAAR, Aadhaar, names, dates of birth, mobile numbers, emails, signing keys or production credentials. Put approved redacted inputs under `private-inputs/`, which is ignored by Git. Synthetic fixtures belong under `contracts/fixtures/synthetic/`.
+
+## Current ASTRAL submission material
+
+The reviewed six-slide deck is [ASTRAL_NiyamSetu_SIH_2026.pptx](docs/hackathon/ASTRAL_NiyamSetu_SIH_2026.pptx). The [short browser walkthrough](docs/hackathon/ASTRAL_NiyamSetu_Walkthrough.webm) and [accurate narration script](docs/hackathon/ASTRAL_NiyamSetu_Walkthrough_Script.md) show only synthetic local data. The [judge guide](JUDGE_GUIDE.md) gives setup and role-by-role testing steps. The [operator study](docs/research/operator-study/README.md) is prepared for later, with zero sessions completed.

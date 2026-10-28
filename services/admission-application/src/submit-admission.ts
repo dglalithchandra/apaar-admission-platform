@@ -1,5 +1,7 @@
+import { ADMISSION_VALIDATION_PROFILE_VERSION } from './model.js';
 import {
   evaluateAdmissionPolicy,
+  type AdmissionPolicyDecision,
   type ApprovalSnapshotQuery,
 } from '@apaar-platform/admission-domain';
 import type {
@@ -77,17 +79,49 @@ export class SubmitAdmissionService {
               }
             : await transaction.loadCapacityUsageForUpdate(approval);
         const occurredAt = this.dependencies.clock.now();
-        const decision = evaluateAdmissionPolicy({
+        const conflict = await transaction.classifyStudentConflict(command.admission);
+        const policyDecision = evaluateAdmissionPolicy({
           admission: command.admission,
           approval,
           evaluatedAt: occurredAt,
           usage,
         });
+        const decision: AdmissionPolicyDecision =
+          conflict === 'NONE'
+            ? policyDecision
+            : {
+                ...policyDecision,
+                outcome:
+                  conflict === 'EXACT' || policyDecision.outcome === 'REJECT'
+                    ? 'REJECT'
+                    : 'MANUAL_REVIEW',
+                targetLifecycleStatus:
+                  conflict === 'EXACT' || policyDecision.outcome === 'REJECT'
+                    ? 'REJECTED'
+                    : 'UNDER_REVIEW',
+                reservation: null,
+                findings: [
+                  ...policyDecision.findings,
+                  {
+                    code:
+                      conflict === 'EXACT'
+                        ? 'STUDENT_ADMISSION_DUPLICATE'
+                        : 'STUDENT_ENROLMENT_OVERLAP_REVIEW',
+                    severity: conflict === 'EXACT' ? 'ERROR' : 'REVIEW',
+                    authority: conflict === 'EXACT' ? 'PROPOSED' : 'UNKNOWN_BLOCKING',
+                    message:
+                      conflict === 'EXACT'
+                        ? 'An active admission already exists for this student, institution, course and academic year. No additional seat was reserved.'
+                        : 'An active admission exists for this student in the same academic year. Authorised review must determine whether the programmes may overlap. No additional seat was reserved.',
+                  },
+                ],
+              };
         const admissionId = this.references.next('ADMISSION');
         const decisionId = this.references.next('DECISION');
         const registrationReference =
           decision.outcome === 'ACCEPT' ? this.references.next('REGISTRATION') : null;
         const result: AdmissionSubmissionResult = {
+          validationProfileVersion: ADMISSION_VALIDATION_PROFILE_VERSION,
           admissionId,
           admissionReference: registrationReference,
           decision,

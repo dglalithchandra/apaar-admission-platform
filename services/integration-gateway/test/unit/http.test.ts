@@ -101,6 +101,7 @@ describe('authenticated HTTP gateway', () => {
       new SyntheticSigningAdapter(),
       clock,
       () => 'SYNTH-VERIFICATION-HTTP-001',
+      { assertAllowed: () => Promise.resolve({ expiresAt: '2027-01-01T00:00:00.000Z' }) },
     );
     app = new GatewayHttpApplication(
       {

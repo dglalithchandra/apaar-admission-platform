@@ -16,6 +16,8 @@ RUN npm ci --ignore-scripts \
   && npm run build -w @apaar-platform/institution-portal
 
 FROM node:24.19.0-alpine3.23@sha256:244cc2b53f46f9e876304391d17682b0ddae9ac33491f4857e25e35a36ba7995 AS runtime
+LABEL org.opencontainers.image.title="NiyamSetu | Admission Integrity & Policy Registry" \
+  org.opencontainers.image.description="Independent SIH 2026 admission integrity and policy registry; official integrations are not enabled."
 ENV NODE_ENV=production
 WORKDIR /workspace
 COPY package.json package-lock.json ./

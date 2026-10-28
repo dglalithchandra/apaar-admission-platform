@@ -1,6 +1,6 @@
 :root {
   color: #182a37;
-  background: #f3f6f8;
+  background: #f5f7fa;
   font-family:
     Inter,
     ui-sans-serif,
@@ -14,17 +14,20 @@
   --muted: #627381;
   --line: #dce5e9;
   --surface: rgba(255, 255, 255, 0.9);
-  --navy: #173e54;
-  --navy-dark: #102d3e;
-  --teal: #087f73;
-  --teal-dark: #06665d;
-  --focus: #e9a900;
-  --danger: #b42318;
-  --danger-bg: #fff4f2;
-  --warning: #8a5800;
-  --warning-bg: #fff8e6;
-  --success: #17633b;
-  --success-bg: #ecf8f0;
+  --navy: #102b46;
+  --navy-dark: #102b46;
+  --blue: #245b94;
+  --teal: #118879;
+  --teal-dark: #0d7065;
+  --amber: #e8a23a;
+  --coral: #d9534f;
+  --focus: #245b94;
+  --danger: #b9423e;
+  --danger-bg: #fff1f0;
+  --warning: #77521d;
+  --warning-bg: #fff7e8;
+  --success: #0b6f64;
+  --success-bg: #e8f5f2;
   --radius-control: 9px;
   --radius-panel: 14px;
   --shadow-panel: 0 10px 30px rgba(33, 62, 76, 0.055), 0 1px 2px rgba(33, 62, 76, 0.04);
@@ -34,7 +37,7 @@
   margin-left: auto;
   border-radius: 999px;
   background: #dff7ec;
-  color: #096447;
+  color: var(--teal-dark);
   font-size: 0.65rem;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -51,7 +54,7 @@
   align-items: start;
   background:
     radial-gradient(circle at 86% 15%, rgba(31, 187, 139, 0.2), transparent 28%),
-    linear-gradient(135deg, #102b3f 0%, #123f4a 100%);
+    linear-gradient(135deg, var(--navy-dark) 0%, #174b52 100%);
   border-radius: 1.1rem;
   color: #fff;
   padding: clamp(1.35rem, 3vw, 2.4rem);
@@ -77,7 +80,7 @@
 }
 
 .twin-controls {
-  border-top: 4px solid #0d8261;
+  border-top: 4px solid var(--teal);
 }
 
 .twin-levers {
@@ -101,12 +104,12 @@
 }
 
 .twin-levers label strong {
-  color: #096447;
+  color: var(--teal-dark);
   font-size: 1.15rem;
 }
 
 .twin-levers input[type='range'] {
-  accent-color: #0d8261;
+  accent-color: var(--teal);
   width: 100%;
 }
 
@@ -180,12 +183,12 @@
 }
 
 .twin-bar--proposed {
-  background: linear-gradient(90deg, #0d8261, #26ad7e);
+  background: linear-gradient(90deg, var(--teal-dark), var(--teal));
 }
 
 .twin-note {
   background: #ecf8f4;
-  border-left: 3px solid #0d8261;
+  border-left: 3px solid var(--teal);
   color: #315c4f;
   font-size: 0.86rem;
   margin: 1.35rem 0 0;
@@ -1395,7 +1398,7 @@ td {
 body {
   color: var(--ink);
   background:
-    radial-gradient(ellipse at 8% 0%, rgba(187, 225, 218, 0.28), transparent 32rem), #f3f6f8;
+    radial-gradient(ellipse at 8% 0%, rgba(187, 225, 218, 0.28), transparent 32rem), #f5f7fa;
 }
 
 .app-shell {
@@ -1408,7 +1411,7 @@ body {
   z-index: 30;
   height: 76px;
   padding-inline: clamp(18px, 3vw, 42px);
-  background: rgba(16, 45, 62, 0.94);
+  background: rgba(16, 43, 70, 0.94);
   border-bottom: 1px solid rgba(185, 223, 215, 0.45);
   box-shadow: 0 8px 24px rgba(19, 46, 61, 0.12);
   backdrop-filter: blur(16px);
@@ -1419,7 +1422,7 @@ body {
   width: 40px;
   height: 40px;
   color: #f5fffc;
-  background: #0b796c;
+  background: #118879;
   border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 11px;
   box-shadow: 0 3px 10px rgba(3, 22, 29, 0.2);
@@ -1433,6 +1436,13 @@ body {
 
 .brand-copy span {
   color: #c3d3da;
+}
+
+.brand-tagline {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .session {
@@ -1509,7 +1519,7 @@ body {
 .sidebar > button[aria-current='page'] {
   color: #075f55;
   background: #e2f1ee;
-  box-shadow: inset 3px 0 0 #0a8274;
+  box-shadow: inset 3px 0 0 var(--teal);
   font-weight: 700;
 }
 
@@ -1525,7 +1535,7 @@ body {
 }
 
 .sidebar > button[aria-current='page'] .nav-icon {
-  color: #08776b;
+  color: var(--teal);
 }
 
 .sidebar .nav-new {
@@ -1574,7 +1584,7 @@ main {
 
 .eyebrow,
 .step {
-  color: #08776b;
+  color: var(--teal);
   font-size: 10px;
   letter-spacing: 0.13em;
 }
@@ -1672,7 +1682,7 @@ main {
 
 .dropzone:hover {
   background: #f0f8f6;
-  border-color: #16877a;
+  border-color: var(--teal);
 }
 
 .dropzone label {
@@ -1682,7 +1692,7 @@ main {
 }
 
 .dropzone label:hover {
-  color: #08776b;
+  color: var(--teal);
   text-decoration: underline;
 }
 
@@ -1691,7 +1701,7 @@ main {
   height: 46px;
   display: grid;
   place-items: center;
-  color: #08776b;
+  color: var(--teal);
   background: #e1f2ee;
   border-radius: 13px;
 }
@@ -1764,8 +1774,8 @@ main {
 .case-form-grid textarea:focus-visible,
 .case-filters input:focus-visible,
 .case-filters select:focus-visible {
-  border-color: #16877a;
-  outline-color: #16877a;
+  border-color: var(--teal);
+  outline-color: var(--teal);
 }
 
 th {

@@ -1,5 +1,6 @@
 import {
   asAcademicYear,
+  emptyCapacityUsage,
   asAdmissionCommandId,
   asApprovalSnapshotId,
   asCampusId,
@@ -77,7 +78,7 @@ function admission(
   category: AdmissionCategory,
   identityVerified = true,
 ): StudentAdmission {
-  const suffix = `${category}-${String(index).padStart(3, '0')}`;
+  const suffix = `${category}-${String(index).padStart(3, '0')}${identityVerified ? '' : '-PENDING'}`;
   return {
     academicYear: asAcademicYear('2026-27'),
     admissionDate: asIsoDate('2026-07-10'),
@@ -116,12 +117,16 @@ const cohort = [
   ...range(2).map((index) => admission(index, 'PM_USPY')),
 ];
 
-export function runPolicyTwin(levers: {
-  readonly nriLimit: number;
-  readonly ordinaryIntake: number;
-  readonly tfwCapacity: number;
-}): SimulationResult {
+export function runPolicyTwin(
+  levers: {
+    readonly nriLimit: number;
+    readonly ordinaryIntake: number;
+    readonly tfwCapacity: number;
+  },
+  ordinaryOccupied = 0,
+): SimulationResult {
   return simulatePolicyScenario({
+    initialUsage: { ...emptyCapacityUsage(), ordinaryUsed: ordinaryOccupied },
     baselineApproval: approval('SYNTH-APPROVAL-BASELINE', BASELINE_LEVERS),
     cohort: { admissions: cohort, reference: 'SYNTH-COHORT-84-ADMISSIONS' },
     scenario: {
@@ -131,7 +136,7 @@ export function runPolicyTwin(levers: {
         levers,
       ),
       rationale: 'Explore impact before accountable policy approval.',
-      reference: `SYNTH-SCENARIO-${String(levers.ordinaryIntake)}-${String(levers.nriLimit)}-${String(levers.tfwCapacity)}`,
+      reference: `SYNTH-SCENARIO-${String(levers.ordinaryIntake)}-${String(levers.nriLimit)}-${String(levers.tfwCapacity)}-OCC-${String(ordinaryOccupied)}`,
     },
   });
 }

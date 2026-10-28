@@ -1,3 +1,5 @@
+import { OversightWorkspace } from './OversightWorkspace.js';
+import type { OversightClient } from './oversight-client.js';
 import { useMemo, useRef, useState, type ChangeEvent, type DragEvent, type JSX } from 'react';
 import {
   Activity,
@@ -109,6 +111,7 @@ export function App({
   caseworkClient,
   integrationClient,
   pilotClient,
+  oversightClient,
   initialRole = 'INSTITUTION_OPERATOR',
   initialView = 'BATCH',
 }: {
@@ -116,10 +119,12 @@ export function App({
   readonly caseworkClient?: CaseworkClient;
   readonly integrationClient?: IntegrationClient;
   readonly pilotClient?: PilotClient;
+  readonly oversightClient?: OversightClient;
   readonly initialRole?: PreviewRole;
-  readonly initialView?: 'BATCH' | 'CASEWORK' | 'INTEGRATIONS' | 'PILOT' | 'POLICY_TWIN';
+  readonly initialView?:
+    'BATCH' | 'CASEWORK' | 'INTEGRATIONS' | 'PILOT' | 'POLICY_TWIN' | 'OVERSIGHT';
 }): JSX.Element {
-  const batchClient = useMemo(() => client ?? new DemoPortalClient(), [client]);
+  const batchClient = useMemo<PortalClient>(() => client ?? new DemoPortalClient(), [client]);
   const governedCaseworkClient = useMemo(
     () => caseworkClient ?? new DemoCaseworkClient(),
     [caseworkClient],
@@ -128,9 +133,9 @@ export function App({
     () => integrationClient ?? new DemoIntegrationClient(),
     [integrationClient],
   );
-  const [view, setView] = useState<'BATCH' | 'CASEWORK' | 'INTEGRATIONS' | 'PILOT' | 'POLICY_TWIN'>(
-    initialView,
-  );
+  const [view, setView] = useState<
+    'BATCH' | 'CASEWORK' | 'INTEGRATIONS' | 'PILOT' | 'POLICY_TWIN' | 'OVERSIGHT'
+  >(initialView);
   const [role, setRole] = useState<PreviewRole>(initialRole);
   const caseworkRole: CaseworkRole | null =
     role === 'INSTITUTION_ADMINISTRATOR'
@@ -220,8 +225,8 @@ export function App({
           <GraduationCap size={22} strokeWidth={1.9} />
         </div>
         <div className="brand-copy">
-          <strong>Admission Registry</strong>
-          <span>Institution workspace · Synthetic environment</span>
+          <strong>NiyamSetu</strong>
+          <span>Admission Integrity &amp; Policy Registry · Synthetic environment</span>
         </div>
         <div className="session">
           <span className="session-org">
@@ -304,6 +309,16 @@ export function App({
             <FlaskConical aria-hidden="true" className="nav-icon" size={17} strokeWidth={1.8} />
             <span>Policy Lab</span> <span className="nav-new">New</span>
           </button>
+          <button
+            aria-current={view === 'OVERSIGHT' ? 'page' : undefined}
+            onClick={() => {
+              setView('OVERSIGHT');
+            }}
+            type="button"
+          >
+            <ClipboardCheck aria-hidden="true" className="nav-icon" size={17} strokeWidth={1.8} />
+            Capacity oversight
+          </button>
           <div className="support-note">
             <strong>
               <CircleHelp aria-hidden="true" size={16} strokeWidth={1.8} />
@@ -313,7 +328,13 @@ export function App({
           </div>
         </nav>
         <main id="main-content">
-          {view === 'POLICY_TWIN' ? (
+          {view === 'OVERSIGHT' ? (
+            <OversightWorkspace
+              key={role}
+              {...(oversightClient === undefined ? {} : { client: oversightClient })}
+              role={role}
+            />
+          ) : view === 'POLICY_TWIN' ? (
             <PolicyTwinWorkspace
               allowed={role === 'AICTE_REVIEWER' || role === 'AICTE_CHECKER' || role === 'AUDITOR'}
             />
@@ -348,6 +369,9 @@ export function App({
                   <p>
                     Validate a product-owned CSV template, receive an immutable receipt and correct
                     only the rows requiring action.
+                  </p>
+                  <p className="brand-tagline">
+                    Verify the record. Apply the rule. Protect the seat.
                   </p>
                 </div>
                 <button
@@ -510,8 +534,12 @@ export function App({
                                   <span className="muted">No issues</span>
                                 ) : (
                                   <div className="finding">
-                                    <strong>{row.findings[0]?.code}</strong>
-                                    <span>{row.findings[0]?.message}</span>
+                                    {row.findings.map((finding, index) => (
+                                      <div key={`${finding.code}-${String(index)}`}>
+                                        <strong>{finding.code}</strong>
+                                        <p>{finding.message}</p>
+                                      </div>
+                                    ))}
                                   </div>
                                 )}
                               </td>
@@ -525,7 +553,27 @@ export function App({
                                     Retry row
                                   </button>
                                 ) : row.admissionReference !== null ? (
-                                  <span className="reference">{row.admissionReference}</span>
+                                  <span className="reference">
+                                    {row.admissionReference}
+                                    {batchClient.printableRecord !== undefined && (
+                                      <button
+                                        className="button button--secondary"
+                                        type="button"
+                                        onClick={() => {
+                                          if (row.admissionReference !== null)
+                                            void batchClient
+                                              .printableRecord?.(row.admissionReference)
+                                              .catch(() => {
+                                                setError(
+                                                  'The printable record could not be downloaded.',
+                                                );
+                                              });
+                                        }}
+                                      >
+                                        Download printable record
+                                      </button>
+                                    )}
+                                  </span>
                                 ) : (
                                   <span className="muted">Use correction file</span>
                                 )}

@@ -1,3 +1,4 @@
+export const ADMISSION_VALIDATION_PROFILE_VERSION = 'student-conflicts/2';
 import type {
   AdmissionPolicyDecision,
   ApprovalSnapshot,
@@ -30,6 +31,7 @@ export interface AdmissionSubmissionReferences {
 }
 
 export interface AdmissionSubmissionResult {
+  readonly validationProfileVersion?: string;
   readonly admissionId: string;
   readonly admissionReference: string | null;
   readonly decisionId: string;

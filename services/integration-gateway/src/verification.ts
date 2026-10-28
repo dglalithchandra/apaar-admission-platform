@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import type { VerificationAuthorizationPort } from './verification-authorization.js';
 import type {
   AdmissionFacts,
   AdmissionFactsPort,
@@ -70,6 +71,7 @@ export class VerificationService {
     private readonly signer: SigningPort,
     private readonly clock: GatewayClock,
     private readonly nextReference: () => string,
+    private readonly authorization: VerificationAuthorizationPort,
   ) {}
 
   public async create(
@@ -101,6 +103,10 @@ export class VerificationService {
         'Consent or an approved legal basis is required.',
       );
     }
+    const facts = await this.facts.get(input.admissionReference);
+    if (facts === null)
+      throw new GatewayProblem('ADMISSION_NOT_FOUND', 404, 'The admission is not visible.');
+    const authorization = await this.authorization.assertAllowed(input, facts, principal);
     const requestHash = hash(input);
     const prior = await this.receipts.find(input.idempotencyKey);
     if (prior !== null) {
@@ -113,13 +119,12 @@ export class VerificationService {
       }
       return prior.receipt;
     }
-    const facts = await this.facts.get(input.admissionReference);
-    if (facts === null)
-      throw new GatewayProblem('ADMISSION_NOT_FOUND', 404, 'The admission is not visible.');
     const issuedAt = this.clock.now();
     const unsigned = {
       claims: pickClaims(facts, input.requestedClaims),
-      expiresAt: new Date(Date.parse(issuedAt) + 15 * 60_000).toISOString(),
+      expiresAt: new Date(
+        Math.min(Date.parse(authorization.expiresAt), Date.parse(issuedAt) + 15 * 60_000),
+      ).toISOString(),
       issuedAt,
       legalBasisReference: legalBasis,
       purpose: input.purpose,
@@ -129,7 +134,23 @@ export class VerificationService {
     };
     const signed = await this.signer.sign(verificationSigningPayload(unsigned));
     const receipt: VerificationReceipt = { ...unsigned, ...signed };
-    await this.receipts.save(input.idempotencyKey, requestHash, receipt);
+    try {
+      await this.receipts.save(input.idempotencyKey, requestHash, receipt);
+    } catch (error) {
+      if (
+        error !== null &&
+        typeof error === 'object' &&
+        'constraint' in error &&
+        error.constraint === 'verification_grant_active'
+      ) {
+        throw new GatewayProblem(
+          'VERIFICATION_GRANT_DENIED',
+          403,
+          'Authorization changed before the receipt could be issued.',
+        );
+      }
+      throw error;
+    }
     return receipt;
   }
 }

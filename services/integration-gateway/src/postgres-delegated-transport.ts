@@ -1,3 +1,6 @@
+import { authorize } from './auth.js';
+import { renderAdmissionRecord } from './printable-admission-record.js';
+import { PostgresOversightRepository, oversightCsv } from './oversight-postgres.js';
 import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import {
@@ -123,6 +126,7 @@ function response(body: unknown, status = 200): GatewayTransportResponse {
 }
 
 export interface PostgresTransportDependencies {
+  readonly verificationPublicKey?: { readonly keyId: string; readonly pem: string } | null;
   readonly batchCreate: CreateBatchService;
   readonly batchJobs: PostgresBatchJobRepository;
   readonly batchQuery: BatchQueryService;
@@ -161,6 +165,82 @@ export class PostgresDelegatedTransport implements ExistingServiceTransportPort 
     principal: Principal,
   ): Promise<GatewayTransportResponse> {
     try {
+      if (operation === 'getVerificationPublicKey') {
+        const key = this.dependencies.verificationPublicKey;
+        if (key === undefined || key === null)
+          throw new GatewayProblem(
+            'SIGNING_KEY_UNAVAILABLE',
+            503,
+            'A public verification key is unavailable.',
+          );
+        return response({
+          ...key,
+          algorithm: 'Ed25519',
+          issuer: 'NiyamSetu independent local issuer',
+        });
+      }
+      if (operation === 'downloadPrintableAdmissionRecord') {
+        const reference = text(path(input)['admissionReference'], 'admissionReference');
+        const found = await this.dependencies.pool.query<{
+          admission_reference: string;
+          institution_id: string;
+          student_key: string;
+          programme_id: string;
+          academic_year_code: string;
+          current_status: string;
+          decision_reference: string;
+          identity_reference: string | null;
+        }>(
+          `
+          SELECT a.registration_reference admission_reference,a.institution_id,a.student_key,a.programme_id,a.academic_year_code,
+            COALESCE((SELECT v.lifecycle_status FROM admission_versions v WHERE v.admission_id=a.id AND v.is_current),a.lifecycle_status) current_status,
+            d.id decision_reference,(SELECT r.payload->>'academicIdentityReference' FROM batch_rows r WHERE r.admission_id=a.id LIMIT 1) identity_reference
+          FROM admissions a JOIN admission_decisions d ON d.admission_id=a.id
+          WHERE a.registration_reference=$1 AND ($2::text IS NULL OR a.institution_id=$2) ORDER BY d.version DESC LIMIT 1`,
+          [reference, principal.institutionId],
+        );
+        const row = found.rows[0];
+        if (!row)
+          throw new GatewayProblem('ADMISSION_NOT_FOUND', 404, 'The admission is not visible.');
+        authorize(principal, 'RECORD_READ', row.institution_id);
+        return {
+          status: 200,
+          contentType: 'text/html',
+          headers: {
+            'content-disposition': 'attachment; filename="niyamsetu-admission-record.html"',
+          },
+          body: renderAdmissionRecord({
+            admissionReference: row.admission_reference,
+            institutionReference: row.institution_id,
+            institutionStudentId: null,
+            studentReference: row.student_key,
+            academicIdentityReference: row.identity_reference,
+            programmeReference: row.programme_id,
+            academicYear: row.academic_year_code,
+            currentStatus: row.current_status,
+            decisionReference: row.decision_reference,
+            generatedAt: new Date().toISOString(),
+          }),
+        };
+      }
+      if (operation === 'getOversightCapacity' || operation === 'exportOversightCapacity') {
+        const filters = query(input);
+        const report = await new PostgresOversightRepository(this.dependencies.pool).read(
+          principal,
+          text(filters['academicYear'], 'academicYear'),
+          Number(filters['offset'] ?? 0),
+        );
+        if (operation === 'exportOversightCapacity')
+          return {
+            body: oversightCsv(report.rows),
+            contentType: 'text/csv',
+            status: 200,
+            headers: {
+              'content-disposition': 'attachment; filename="niyamsetu-capacity-page.csv"',
+            },
+          };
+        return response(report);
+      }
       if (operation === 'listAdmissionBatchTemplates') {
         return response({ items: [{ templateVersion: '1.0', mediaType: 'text/csv' }] });
       }

@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
-  title: APAAR Admission Registry API
-  version: 0.5.0-draft
+  title: NiyamSetu | Admission Integrity & Policy Registry
+  version: 0.6.0-draft
   description: >-
-    Product-owned draft for institution submission, decision tracking and
-    purpose-limited verification. It is not an official AICTE or APAAR API.
+    Product-owned NiyamSetu draft for institution submission, decision tracking
+    and purpose-limited verification. This is not an official AICTE or APAAR API.
   license:
     name: Internal draft - licence selection pending
     identifier: LicenseRef-Internal-Draft
@@ -14,6 +14,104 @@ servers:
 security:
   - oauth2: []
 paths:
+  /v1/verification-key:
+    get:
+      operationId: getVerificationPublicKey
+      summary: Read the independent local issuer public verification key
+      description: The key establishes this independent local issuer only. It does not establish government or degree-awarding authority.
+      responses:
+        '200':
+          description: Current independent issuer key
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [keyId, pem, algorithm, issuer]
+                properties:
+                  keyId: { type: string }
+                  pem: { type: string }
+                  algorithm: { type: string, const: Ed25519 }
+                  issuer: { type: string }
+        '401': { description: Authentication required }
+        '403': { description: Role not permitted }
+        '503': { description: Verification key is unavailable }
+  /v1/admissions/{admissionReference}/record.html:
+    get:
+      operationId: downloadPrintableAdmissionRecord
+      summary: Download an independent printable admission record
+      description: Includes separate student-ID and academic-identity fields, with absent institution student IDs explicitly marked. This synthetic record is not a degree or government credential.
+      parameters:
+        - { name: admissionReference, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Script-free printable HTML for an authorised institution or regulator
+          content:
+            text/html:
+              schema: { type: string }
+        '401': { description: Authentication required }
+        '403': { description: Role not permitted }
+        '404': { description: Admission is not visible }
+  /v1/oversight/capacity:
+    get:
+      operationId: getOversightCapacity
+      summary: Read paginated approval capacity and reservation reconciliation
+      description: Institution users see only their institution; reviewer, checker and auditor roles can inspect cross-institution aggregates. Includes historical approval snapshots. Counts repeat per bucket and must not be summed as distinct students.
+      parameters:
+        - {
+            name: academicYear,
+            in: query,
+            required: true,
+            schema: { type: string, pattern: '^20[0-9]{2}-[0-9]{2}$' },
+          }
+        - {
+            name: offset,
+            in: query,
+            schema: { type: integer, minimum: 0, maximum: 100000, default: 0 },
+          }
+      responses:
+        '200':
+          description: Up to 100 aggregate capacity rows and the next page offset
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rows, nextOffset]
+                properties:
+                  rows:
+                    {
+                      type: array,
+                      maxItems: 100,
+                      items: { type: object, additionalProperties: true },
+                    }
+                  nextOffset: { type: [integer, 'null'] }
+        '401': { description: Authentication required }
+        '403': { description: Role not permitted }
+        '422': { description: Invalid academic year or page }
+  /v1/oversight/capacity.csv:
+    get:
+      operationId: exportOversightCapacity
+      summary: Export the current page of identifier-minimised capacity reconciliation
+      parameters:
+        - {
+            name: academicYear,
+            in: query,
+            required: true,
+            schema: { type: string, pattern: '^20[0-9]{2}-[0-9]{2}$' },
+          }
+        - {
+            name: offset,
+            in: query,
+            schema: { type: integer, minimum: 0, maximum: 100000, default: 0 },
+          }
+      responses:
+        '200':
+          description: CSV export of the selected page, not a full national export
+          content:
+            text/csv:
+              schema: { type: string }
+        '401': { description: Authentication required }
+        '403': { description: Role not permitted }
+        '422': { description: Invalid academic year or page }
   /health:
     get:
       operationId: getHealth

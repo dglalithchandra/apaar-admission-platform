@@ -1,6 +1,6 @@
 # Student admission CSV template 1.0
 
-This is a product-owned contract for the Admission Registry. It is not an official AICTE, APAAR or API Setu format.
+This is a product-owned contract for NiyamSetu. It is not an official AICTE, APAAR or API Setu format.
 
 ## Limits and encoding
 

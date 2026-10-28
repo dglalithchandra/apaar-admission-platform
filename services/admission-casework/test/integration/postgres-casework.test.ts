@@ -1517,6 +1517,10 @@ describe('PostgreSQL casework governance foundation', () => {
     await importApproval(sourceRoute);
     await importApproval(targetRoute);
     const source = await submitAccepted(sourceRoute, 'TRANSFER-SOURCE');
+    await pool.query(
+      'INSERT INTO admission_identity_bindings(admission_id,canonical_identity_key,provider_reference) VALUES($1,$2,$3)',
+      [source.admissionId, 'SYNTH-TRANSFER-CANONICAL', 'SYNTH-TRANSFER-PROVIDER'],
+    );
     await insertPolicy('SYNTH-POLICY-V1', {
       configuration: { sameInstitutionTransfer: true },
     });
@@ -1538,7 +1542,32 @@ describe('PostgreSQL casework governance foundation', () => {
       new DeterministicAuthorizationSimulator(),
       repository,
     );
-    const [first, replay] = await Promise.all([service.execute(command), service.execute(command)]);
+    await expect(service.execute(command)).rejects.toThrow('retain the verified source identity');
+    expect(
+      (
+        await pool.query<{ lifecycle_status: string }>(
+          'SELECT lifecycle_status FROM admission_versions WHERE admission_id=$1 AND is_current',
+          [source.admissionId],
+        )
+      ).rows[0]?.lifecycle_status,
+    ).toBe('ACTIVE');
+    const boundCommand = {
+      ...command,
+      targetSubmission: {
+        ...targetSubmission,
+        admission: {
+          ...targetSubmission.admission,
+          identityVerification: {
+            ...targetSubmission.admission.identityVerification,
+            canonicalStudentKey: asStudentKey('SYNTH-TRANSFER-CANONICAL'),
+          },
+        },
+      },
+    };
+    const [first, replay] = await Promise.all([
+      service.execute(boundCommand),
+      service.execute(boundCommand),
+    ]);
     expect(replay).toEqual(first);
     expect(first).toMatchObject({
       implementationType: 'TRANSFER',

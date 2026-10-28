@@ -83,7 +83,7 @@ That gives the jury a policy-level outcome, a human-impact view and a technicall
 
 ### Slide 1 - Title
 
-**Admission Registry**
+**NiyamSetu | Admission Integrity & Policy Registry**
 **APAAR-linked, policy-aware admission integrity for AICTE**
 
 Required PS metadata remains visible. Use one quiet product image rather than a decorative technology collage. Team name and team ID remain the only user-supplied fields.

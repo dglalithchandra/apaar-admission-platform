@@ -4,7 +4,7 @@ Date: 24 October 2026
 
 ## Outcome
 
-A separate, local Git workspace now contains the research-to-build foundation for the full-scale APAAR admission registry. It is safe to begin an executable vertical slice without waiting for private credentials, and it clearly separates verified facts, design assumptions and inputs that require authority.
+The local Git workspace contains the research-to-build foundation for NiyamSetu, an independent admission integrity and policy registry associated with SIH 2026 problem statement 26263. APAAR and other protected integrations remain subject to official access; the project clearly separates verified facts, design assumptions and inputs that require authority.
 
 ## Completed without user assistance
 

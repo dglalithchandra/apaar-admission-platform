@@ -30,7 +30,7 @@ export class HttpIntegrationClient implements IntegrationClient {
       }),
       headers: {
         'content-type': 'application/json',
-        'idempotency-key': 'SYNTH-PORTAL-IDEMPOTENCY-001',
+        'idempotency-key': `SYNTH-PORTAL-ED25519-${crypto.randomUUID().toUpperCase()}`,
       },
       method: 'POST',
     });

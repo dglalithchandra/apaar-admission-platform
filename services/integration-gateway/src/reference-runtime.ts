@@ -1,4 +1,8 @@
+import { PostgresVerificationGrantRepository } from './verification-authorization-postgres.js';
+import { GrantVerificationAuthorization } from './verification-authorization.js';
 import { randomUUID } from 'node:crypto';
+import { DisabledSigningAdapter } from './ed25519-signing.js';
+import type { SigningPort } from './model.js';
 import {
   PostgresAdmissionStore,
   SubmitAdmissionService,
@@ -41,11 +45,7 @@ import {
 } from './reference-persistence.js';
 import { PostgresIntegrationStore } from './postgres-store.js';
 import { SyntheticManifestIntegrityAdapter } from './approval-import.js';
-import {
-  SyntheticSigningAdapter,
-  VerificationService,
-  VerificationStatusService,
-} from './verification.js';
+import { VerificationService, VerificationStatusService } from './verification.js';
 
 class SyntheticAdmissionReferences implements ReferenceGenerator {
   public next(
@@ -132,6 +132,7 @@ export interface ReferenceRuntime {
 export function createReferenceRuntime(
   pool: Pool,
   config: GatewayConfig,
+  signing: SigningPort = new DisabledSigningAdapter(),
   clock: GatewayClock = { now: () => new Date().toISOString() },
 ): ReferenceRuntime {
   const admissionStore = new PostgresAdmissionStore(pool);
@@ -175,8 +176,8 @@ export function createReferenceRuntime(
   );
   const store = new PostgresIntegrationStore(pool);
   const telemetry = new InMemoryGatewayTelemetry();
-  const signing = new SyntheticSigningAdapter();
   const transport = new PostgresDelegatedTransport({
+    verificationPublicKey: signing.exportPublicKey?.() ?? null,
     batchCreate,
     batchJobs,
     batchQuery: new BatchQueryService(batchRepository),
@@ -228,6 +229,7 @@ export function createReferenceRuntime(
       signing,
       clock,
       () => `SYNTH-VERIFICATION-${randomUUID().toUpperCase()}`,
+      new GrantVerificationAuthorization(new PostgresVerificationGrantRepository(pool), clock),
     ),
     verificationStatusService: new VerificationStatusService(store, clock, signing),
   };

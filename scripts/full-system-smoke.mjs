@@ -1,3 +1,6 @@
+import { Buffer } from 'node:buffer';
+import { createPublicKey, verify } from 'node:crypto';
+import './prepare-local-signing-key.mjs';
 import { spawnSync } from 'node:child_process';
 
 /* global Blob, FormData, Headers */
@@ -97,7 +100,13 @@ const rows = [
   '1.0,SYNTH-RECORD-FULL-003,SYNTH-STUDENT-FULL-003,SYNTH-APAAR-MANUAL,SYNTH-INSTITUTION-001,SYNTH-CAMPUS-001,SYNTH-PROGRAMME-001,SYNTH-COURSE-001,2026-27,2026-07-01,ORDINARY,,false,false,false,false,VERIFIED',
   '1.0,SYNTH-RECORD-FULL-004,SYNTH-STUDENT-FULL-004,SYNTH-APAAR-OUTAGE,SYNTH-INSTITUTION-001,SYNTH-CAMPUS-001,SYNTH-PROGRAMME-001,SYNTH-COURSE-001,2026-27,2026-07-01,ORDINARY,,false,false,false,false,VERIFIED',
 ];
-const csv = `${[header, ...rows].join('\n')}\n`;
+const runRows = rows.map((row) =>
+  row
+    .replace(/SYNTH-STUDENT-FULL-(\d+)/g, `SYNTH-STUDENT-FULL-$1-${runReference}`)
+    .replace(/SYNTH-RECORD-FULL-(\d+)/g, `SYNTH-RECORD-FULL-$1-${runReference}`)
+    .replace('SYNTH-APAAR-FULL-001', `SYNTH-APAAR-FULL-001-${runReference}`),
+);
+const csv = `${[header, ...runRows].join('\n')}\n`;
 
 function upload(content, key) {
   const form = new FormData();
@@ -119,7 +128,7 @@ function upload(content, key) {
   );
 }
 
-const receipt = await upload(csv, 'SYNTH-FULL-SYSTEM-UPLOAD-001');
+const receipt = await upload(csv, caseKey('UPLOAD'));
 let summary;
 for (let attempt = 0; attempt < 80; attempt += 1) {
   summary = await request(`/v1/admission-batches/${receipt.batchId}`, operator);
@@ -134,12 +143,12 @@ const accepted = batchRows.items.find((item) => item.status === 'ACCEPTED');
 if (!accepted?.admissionReference) throw new Error('No accepted synthetic admission was produced.');
 await request(`/v1/admission-batches/${receipt.batchId}/corrections.csv`, operator);
 
-const replay = await upload(csv, 'SYNTH-FULL-SYSTEM-UPLOAD-001');
+const replay = await upload(csv, caseKey('UPLOAD'));
 if (!replay.replayed || replay.batchId !== receipt.batchId)
   throw new Error('Batch replay was not exactly idempotent.');
 await upload(
   csv.replace('SYNTH-STUDENT-FULL-001', 'SYNTH-STUDENT-FULL-CONFLICT'),
-  'SYNTH-FULL-SYSTEM-UPLOAD-001',
+  caseKey('UPLOAD'),
 )
   .then(() => {
     throw new Error('Conflicting idempotency reuse was accepted.');
@@ -147,6 +156,57 @@ await upload(
   .catch((error) => {
     if (!String(error).includes('got 409')) throw error;
   });
+
+const duplicateCsv = `${header}\n${runRows[0].replace('SYNTH-RECORD-FULL-001', 'SYNTH-RECORD-FRESH-KEY').replace('SYNTH-STUDENT-FULL-001', 'SYNTH-STUDENT-ALIAS-001')}\n`;
+const duplicateBatch = await upload(duplicateCsv, caseKey('DUPLICATE-FRESH-KEY'));
+let duplicateSummary;
+for (let attempt = 0; attempt < 80; attempt += 1) {
+  duplicateSummary = await request(`/v1/admission-batches/${duplicateBatch.batchId}`, operator);
+  if (!['RECEIVED', 'SCANNING', 'VALIDATING', 'PROCESSING'].includes(duplicateSummary.status))
+    break;
+  await new Promise((resolve) => setTimeout(resolve, 250));
+}
+const duplicateRows = await request(
+  `/v1/admission-batches/${duplicateBatch.batchId}/rows`,
+  operator,
+);
+if (
+  duplicateSummary.totals.accepted !== 0 ||
+  duplicateSummary.totals.rejected !== 1 ||
+  !duplicateRows.items[0]?.findings.some(
+    (finding) => finding.code === 'STUDENT_ADMISSION_DUPLICATE',
+  )
+) {
+  throw new Error(
+    'Fresh-key duplicate student admission was not rejected with a stable rule code.',
+  );
+}
+
+const oversight = await request(
+  '/v1/oversight/capacity?academicYear=2026-27',
+  tokens.AICTE_REVIEWER,
+);
+if (
+  !Array.isArray(oversight.rows) ||
+  oversight.rows.length === 0 ||
+  oversight.rows.some((row) => row.drift !== 0)
+)
+  throw new Error('Capacity oversight did not reconcile with its reservation ledger.');
+await request('/v1/oversight/capacity?academicYear=2026-27', tokens.AUTHORIZED_VERIFIER, {}, 403);
+const oversightExport = await request(
+  '/v1/oversight/capacity.csv?academicYear=2026-27',
+  tokens.AICTE_REVIEWER,
+);
+if (!oversightExport.includes('approvedCapacity'))
+  throw new Error('The scoped capacity export was unavailable.');
+const printable = await request(
+  `/v1/admissions/${accepted.admissionReference}/record.html`,
+  operator,
+);
+if (!printable.includes('not a degree') || !printable.includes('Not supplied by institution'))
+  throw new Error(
+    'The independent printable record did not explain its provenance or missing student ID.',
+  );
 
 const admission = await request(`/v1/admissions/${accepted.admissionReference}`, operator);
 const casePage = await request('/v1/institutions/SYNTH-INSTITUTION-001/cases?limit=100', operator);
@@ -249,6 +309,17 @@ const implementation =
       );
 if (implementation.state !== 'IMPLEMENTED') throw new Error('Approved case was not implemented.');
 
+const readmissionCsv = `${header}\n${runRows[0].replace('SYNTH-RECORD-FULL-001', 'SYNTH-RECORD-READMISSION')}\n`;
+const readmissionBatch = await upload(readmissionCsv, caseKey('READMISSION'));
+let readmission;
+for (let attempt = 0; attempt < 80; attempt++) {
+  readmission = await request(`/v1/admission-batches/${readmissionBatch.batchId}`, operator);
+  if (!['RECEIVED', 'SCANNING', 'VALIDATING', 'PROCESSING'].includes(readmission.status)) break;
+  await new Promise((resolve) => setTimeout(resolve, 250));
+}
+if (readmission.totals.accepted !== 1)
+  throw new Error('A completed cancellation continued to block legitimate readmission.');
+
 const verification = await command(
   '/v1/verifications',
   tokens.AUTHORIZED_VERIFIER,
@@ -259,7 +330,7 @@ const verification = await command(
     purpose: 'SYNTH-FULL-SYSTEM',
     requestedClaims: ['ADMISSION_EXISTS', 'CURRENT_STATUS'],
   },
-  'SYNTH-VERIFICATION-FULL-001',
+  caseKey('VERIFICATION'),
 );
 if (Object.keys(verification.claims).some((claim) => claim.includes('APAAR')))
   throw new Error('Verification disclosed an unrequested identifier.');
@@ -286,6 +357,39 @@ docker([
   'pilot-worker',
 ]);
 await waitReady();
+const verifiedAfterRestart = await request(
+  `/v1/verifications/${verification.verificationReference}`,
+  tokens.AUTHORIZED_VERIFIER,
+);
+const signingPayload = JSON.stringify({
+  claims: Object.fromEntries(
+    Object.entries(verifiedAfterRestart.claims).sort(([left], [right]) =>
+      left.localeCompare(right),
+    ),
+  ),
+  expiresAt: verifiedAfterRestart.expiresAt,
+  issuedAt: verifiedAfterRestart.issuedAt,
+  legalBasisReference: verifiedAfterRestart.legalBasisReference,
+  purpose: verifiedAfterRestart.purpose,
+  requesterOrganisation: verifiedAfterRestart.requesterOrganisation,
+  status: 'ACTIVE',
+  verificationReference: verifiedAfterRestart.verificationReference,
+});
+const publicIssuer = await request('/v1/verification-key', tokens.AUTHORIZED_VERIFIER);
+const issuerPublicKey = createPublicKey(publicIssuer.pem);
+if (publicIssuer.keyId !== verifiedAfterRestart.keyId)
+  throw new Error('Receipt issuer key does not match the advertised key.');
+if (
+  verifiedAfterRestart.algorithm !== 'Ed25519' ||
+  !verify(
+    null,
+    Buffer.from(signingPayload),
+    issuerPublicKey,
+    Buffer.from(verifiedAfterRestart.signature, 'base64url'),
+  )
+) {
+  throw new Error('Independent public-key verification failed after gateway restart.');
+}
 const afterRestart = await request(`/v1/admission-batches/${receipt.batchId}`, operator);
 if (afterRestart.totals.accepted !== 1) throw new Error('Accepted state did not survive restart.');
 
@@ -299,6 +403,11 @@ process.stdout.write(
       manualReview: summary.totals.manualReview,
       pilotState: execution.state,
       restartPersistence: 'passed',
+      freshKeyDuplicateRejected: true,
+      readmissionAfterCancellation: 'passed',
+      capacityReconciliation: 'passed',
+      printableRecord: 'passed',
+      publicKeyVerificationAfterRestart: 'passed',
       rolesExercised: roles.length,
     },
     null,

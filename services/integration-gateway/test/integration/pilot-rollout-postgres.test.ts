@@ -104,7 +104,7 @@ describe('Stage 7 controlled rollout PostgreSQL', () => {
     const applied = await pool.query<{ version: string }>(
       'SELECT version FROM schema_migrations ORDER BY version',
     );
-    expect(applied.rows.at(-1)?.version).toBe('0009_operational_event_reference_compatibility.sql');
+    expect(applied.rows.at(-1)?.version).toBe('0016_synthetic_identity_binding_backfill.sql');
     for (const directory of migrationDirectories)
       await expect(migrate(pool, directory)).resolves.toEqual([]);
   });

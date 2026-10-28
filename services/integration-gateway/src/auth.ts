@@ -2,6 +2,13 @@ import type { AuthenticationPort, GatewayAction, GatewayRole, Principal } from '
 import { GatewayProblem } from './model.js';
 
 const ACTION_ROLES: Readonly<Record<GatewayAction, readonly GatewayRole[]>> = {
+  OVERSIGHT_READ: [
+    'INSTITUTION_OPERATOR',
+    'INSTITUTION_ADMINISTRATOR',
+    'AICTE_REVIEWER',
+    'AICTE_CHECKER',
+    'AUDITOR',
+  ],
   ADMISSION_WRITE: ['INSTITUTION_ADMINISTRATOR'],
   APPROVAL_IMPORT: ['SERVICE_INTEGRATION_CLIENT'],
   AUDIT_READ: ['AUDITOR'],

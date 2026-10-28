@@ -37,6 +37,7 @@ export interface PortalBatch {
 }
 
 export interface PortalClient {
+  printableRecord?(admissionReference: string): Promise<void>;
   correctionCsv(batchId: string): Promise<string>;
   createBatch(file: File): Promise<PortalBatch>;
   listRows(batchId: string): Promise<readonly PortalRow[]>;

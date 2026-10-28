@@ -13,6 +13,10 @@ Use React with strict TypeScript and Vite. Keep the product boundary behind a `P
 
 The UI is neutral “Admission Registry” software and contains no official AICTE or APAAR branding. The default client is explicitly synthetic. It does not claim to be connected to a production identity or admission service.
 
+## Branding follow-up (28 October 2026)
+
+The original decision records the product's neutral name at the time it was made. The current independent product name is **NiyamSetu | Admission Integrity & Policy Registry**. This display-name change does not change the synthetic client, APAAR adapter boundary, AICTE affiliation status or production connectivity.
+
 ## Consequences
 
 - The Stage 3 workflow is buildable and testable without inventing authentication or provider credentials.

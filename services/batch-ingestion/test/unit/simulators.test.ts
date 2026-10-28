@@ -26,6 +26,26 @@ describe('local development adapters', () => {
     expect(result.status).toBe(expected);
   });
 
+  it('binds verified identities independently of a local student reference', async () => {
+    const verifier = new DeterministicAcademicIdentityVerifier();
+    const request = {
+      academicIdentityReference: 'SYNTH-IDENTITY-VERIFIED',
+      correlationReference: 'SYNTH-CORRELATION',
+      studentKey: admissionRow('0001').studentKey,
+    };
+    const first = await verifier.verify(request);
+    const second = await verifier.verify({
+      ...request,
+      studentKey: admissionRow('0002').studentKey,
+    });
+    expect(first.canonicalStudentKey).toBeDefined();
+    expect(second.canonicalStudentKey).toBe(first.canonicalStudentKey);
+    expect(
+      (await verifier.verify({ ...request, academicIdentityReference: 'UNTRUSTED-REFERENCE' }))
+        .status,
+    ).toBe('UNVERIFIED');
+  });
+
   it('classifies clean, infected and unavailable scanner fixtures', async () => {
     const scanner = new DeterministicMalwareScanner();
     await expect(scanner.scan([Buffer.from('SYNTH-CLEAN')])).resolves.toBe('CLEAN');

@@ -1,6 +1,7 @@
 {
   "name": "@apaar-platform/institution-portal",
   "version": "0.1.0",
+  "description": "NiyamSetu admission integrity and policy workspace.",
   "private": true,
   "type": "module",
   "scripts": {

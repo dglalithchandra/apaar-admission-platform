@@ -228,4 +228,28 @@ await pool.query(`
     true,'SYNTH-EXECUTION-CHECKER-001','2026-10-26T17:00:00.000Z'
   ) ON CONFLICT(report_reference) DO NOTHING;
 `);
+// Explicit local policy grants for synthetic acceptance journeys; not statutory authority.
+for (const [reference, purpose] of [
+  ['SYNTH-LEGAL-BASIS-001', 'SYNTH-PORTAL-ACCEPTANCE'],
+  ['SYNTH-LEGAL-BASIS-FULL-001', 'SYNTH-FULL-SYSTEM'],
+]) {
+  await pool.query(
+    `INSERT INTO verification_authorization_grants(reference,issuer_reference,payload)
+     VALUES($1,'SYNTH-LOCAL-POLICY-ISSUER',$2) ON CONFLICT(reference) DO NOTHING`,
+    [
+      reference,
+      {
+        reference,
+        kind: 'LEGAL_BASIS',
+        admissionReference: null,
+        institutionReference: 'SYNTH-INSTITUTION-001',
+        recipientOrganisation: 'SYNTH-VERIFIER-ORG',
+        purpose,
+        claims: ['ADMISSION_EXISTS', 'CURRENT_STATUS'],
+        validFrom: '2026-01-01T00:00:00.000Z',
+        expiresAt: '2027-12-31T23:59:59.000Z',
+      },
+    ],
+  );
+}
 await pool.end();

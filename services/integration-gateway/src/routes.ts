@@ -40,6 +40,16 @@ const execution = '(?<executionReference>[^/]+)';
 const incident = '(?<incidentReference>[^/]+)';
 
 export const DELEGATED_ROUTES: readonly DelegatedRoute[] = [
+  route('GET', '/v1/verification-key', 'getVerificationPublicKey', 'VERIFICATION_READ', 200),
+  route(
+    'GET',
+    '/v1/admissions/(?<admissionReference>[^/]+)/record\\.html',
+    'downloadPrintableAdmissionRecord',
+    'RECORD_READ',
+    200,
+  ),
+  route('GET', '/v1/oversight/capacity', 'getOversightCapacity', 'OVERSIGHT_READ', 200),
+  route('GET', '/v1/oversight/capacity\\.csv', 'exportOversightCapacity', 'OVERSIGHT_READ', 200),
   route(
     'POST',
     `/v1/institutions/${institution}/admission-batches`,
