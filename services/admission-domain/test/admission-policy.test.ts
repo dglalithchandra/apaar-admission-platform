@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import approvalFixture from '../../../contracts/fixtures/synthetic/approval-capacity.json' with { type: 'json' };
 import {
   ADMISSION_RULESET_VERSION,
+  assertImportableApproval,
+  validateApprovalCapacity,
   RULE_CODES,
   asAcademicYear,
   asAdmissionCommandId,
@@ -166,6 +168,12 @@ function makeAdmission(options: AdmissionOptions = {}): StudentAdmission {
     category,
     commandId: IDS.command,
     courseId: IDS.course,
+    categoryEvidenceCheck: {
+      method: 'SYNTHETIC_FIXTURE',
+      evidenceReference: 'SYNTH-CATEGORY-EVIDENCE',
+      reviewerReference: 'SYNTH-REVIEWER',
+      checkedAt: asIsoDateTime('2026-07-01T00:00:00Z'),
+    },
     eligibilityEvidence: options.eligibilityEvidence ?? 'VERIFIED',
     identityVerification: {
       checkedAt: asIsoDateTime('2026-08-01T08:00:00.000Z'),
@@ -596,5 +604,125 @@ describe('identity and unresolved policy', () => {
 
     expect(decision.outcome).toBe('MANUAL_REVIEW');
     expect(codes(decision)).toContain(RULE_CODES.POLICY_CATEGORY_UNCONFIGURED);
+  });
+});
+
+describe('handbook configuration and evidence boundaries', () => {
+  it('independently checks sixty-seat percentages instead of trusting supplied absolutes', () => {
+    expect(validateApprovalCapacity(makeApproval())).toEqual([]);
+    expect(
+      validateApprovalCapacity(makeApproval({ fnApproved: false, lateralApproved: false })),
+    ).toEqual([]);
+    expect(
+      validateApprovalCapacity(
+        makeApproval({ fnApproved: false, fnForeignAcrossRoutesMaximum: 10 }),
+      )[0]?.severity,
+    ).toBe('ERROR');
+    for (const options of [
+      { nriCapacity: 5 },
+      { tfwCapacity: 6 },
+      { fnCombinedCapacity: 12 },
+      { fnForeignAcrossRoutesMaximum: 10 },
+      { lateralSupernumeraryCapacity: 7 },
+      { pmCourseCapacity: 3 },
+      { pmInstitutionCapacity: 11 },
+      { pmCourseCapacity: 2, pmInstitutionCapacity: 1 },
+      { nriCapacity: 61 },
+      { ordinaryIntake: -1 },
+      { tfwCapacity: 0.5 },
+      { fnGulfCapacity: 10 },
+    ]) {
+      const snapshot = makeApproval(options);
+      expect(validateApprovalCapacity(snapshot).some((f) => f.severity === 'ERROR')).toBe(true);
+      expect(() => assertImportableApproval(snapshot)).toThrow('APPROVAL_CONFIGURATION_INVALID');
+      expect(decide(makeAdmission(), snapshot).reservation).toBeNull();
+    }
+    expect(() => assertImportableApproval(makeApproval())).not.toThrow();
+  });
+  it('does not invent rounding, subgroup transfers or authority outside the source period', () => {
+    for (const options of [
+      { ordinaryIntake: 61 },
+      { fnCombinedCapacity: 8, fnForeignAndOciCapacity: 5 },
+      { fnGulfCapacity: 2 },
+      { fnForeignAndOciCapacity: 5 },
+      { academicYear: '2027-28' },
+      { lateralVacancyCapacity: 61 },
+    ]) {
+      expect(validateApprovalCapacity(makeApproval(options))).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'APPROVAL_POLICY_UNRESOLVED',
+            authority: 'UNKNOWN_BLOCKING',
+          }),
+        ]),
+      );
+      expect(() => assertImportableApproval(makeApproval(options))).toThrow(
+        'APPROVAL_POLICY_UNRESOLVED',
+      );
+    }
+    expect(
+      validateApprovalCapacity(
+        makeApproval({ effectiveFrom: '2026-09-01', effectiveTo: '2026-08-01' }),
+      )[0]?.severity,
+    ).toBe('ERROR');
+    for (const key of [
+      'sourceSystem',
+      'sourceRecordId',
+      'sourceHash',
+      'approvedBy',
+      'policyVersion',
+      'importBatchReference',
+    ] as const) {
+      expect(validateApprovalCapacity({ ...makeApproval(), [key]: '' })[0]?.authority).toBe(
+        'UNKNOWN_BLOCKING',
+      );
+    }
+  });
+  it('confines hypothetical percentage amendments to explicit simulation context', () => {
+    const snapshot = makeApproval({ nriCapacity: 5, tfwCapacity: 6 });
+    const amendment = {
+      reference: 'SYNTH-AMENDMENT',
+      rationale: 'SYNTH-EXPERIMENT',
+      nriPercent: 10,
+      tfwPercent: 10,
+    };
+    expect(validateApprovalCapacity(snapshot, amendment)).toEqual([]);
+    expect(() => assertImportableApproval(snapshot)).toThrow();
+    expect(validateApprovalCapacity(snapshot, { ...amendment, nriPercent: 5 })[0]?.authority).toBe(
+      'PROPOSED',
+    );
+    for (const invalid of [
+      { reference: '' },
+      { rationale: '' },
+      { nriPercent: -1 },
+      { nriPercent: 101 },
+      { tfwPercent: Number.NaN },
+    ]) {
+      expect(() => validateApprovalCapacity(snapshot, { ...amendment, ...invalid })).toThrow(
+        TypeError,
+      );
+    }
+  });
+  it('requires accountable category evidence, not the word VERIFIED', () => {
+    const admission = makeAdmission({ category: 'NRI' });
+    const { categoryEvidenceCheck: check, ...unproven } = admission;
+    expect(decide(unproven).outcome).toBe('MANUAL_REVIEW');
+    expect(decide(admission).outcome).toBe('ACCEPT');
+    if (!check) throw new Error('SYNTH fixture check missing');
+    for (const change of [
+      { evidenceReference: '' },
+      { reviewerReference: '' },
+      { checkedAt: 'invalid' as typeof check.checkedAt },
+      { evidenceReference: 'untrusted' },
+      { reviewerReference: 'untrusted' },
+    ]) {
+      expect(decide({ ...admission, categoryEvidenceCheck: { ...check, ...change } }).outcome).toBe(
+        'MANUAL_REVIEW',
+      );
+    }
+    expect(
+      decide({ ...admission, categoryEvidenceCheck: { ...check, method: 'INDEPENDENT_REVIEW' } })
+        .outcome,
+    ).toBe('ACCEPT');
   });
 });

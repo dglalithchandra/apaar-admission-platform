@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.invalid/schemas/student-admission.schema.json",
   "title": "Student admission command",
-  "description": "Product-owned command contract. Provider-specific academic-identity fields are intentionally excluded.",
+  "description": "Public product-owned admission request. Category eligibilityEvidence is an institution declaration, not an independent check. Trusted review provenance cannot be submitted through this contract.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -21,19 +21,45 @@
     "identityVerification"
   ],
   "properties": {
-    "recordKey": { "type": "string", "minLength": 8, "maxLength": 128 },
+    "recordKey": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128
+    },
     "studentReference": {
       "type": "string",
       "minLength": 1,
       "maxLength": 128,
       "description": "Opaque product reference; never an APAAR database primary key."
     },
-    "institutionId": { "type": "string", "minLength": 1, "maxLength": 64 },
-    "campusId": { "type": "string", "minLength": 1, "maxLength": 64 },
-    "programmeId": { "type": "string", "minLength": 1, "maxLength": 64 },
-    "courseId": { "type": "string", "minLength": 1, "maxLength": 64 },
-    "academicYear": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
-    "admissionDate": { "type": "string", "format": "date" },
+    "institutionId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "campusId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "programmeId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "courseId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "academicYear": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}$"
+    },
+    "admissionDate": {
+      "type": "string",
+      "format": "date"
+    },
     "category": {
       "type": "string",
       "enum": [
@@ -57,13 +83,25 @@
       "additionalProperties": false,
       "required": ["nri", "oci", "foreignNational", "gulfWorkerChild"],
       "properties": {
-        "nri": { "type": "boolean" },
-        "oci": { "type": "boolean" },
-        "foreignNational": { "type": "boolean" },
-        "gulfWorkerChild": { "type": "boolean" }
+        "nri": {
+          "type": "boolean"
+        },
+        "oci": {
+          "type": "boolean"
+        },
+        "foreignNational": {
+          "type": "boolean"
+        },
+        "gulfWorkerChild": {
+          "type": "boolean"
+        }
       }
     },
-    "eligibilityEvidence": { "type": "string", "enum": ["VERIFIED", "PENDING", "MISSING"] },
+    "eligibilityEvidence": {
+      "type": "string",
+      "enum": ["VERIFIED", "PENDING", "MISSING"],
+      "description": "Declared status only. VERIFIED without a separately established trusted category check requires manual review."
+    },
     "identityVerification": {
       "type": "object",
       "additionalProperties": false,
@@ -82,20 +120,46 @@
             "UNVERIFIED"
           ]
         },
-        "checkedAt": { "type": "string", "format": "date-time" },
-        "providerContractVersion": { "type": "string", "minLength": 1, "maxLength": 100 },
-        "providerRequestReference": { "type": ["string", "null"], "maxLength": 128 }
+        "checkedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "providerContractVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "providerRequestReference": {
+          "type": ["string", "null"],
+          "maxLength": 128
+        }
       }
     }
   },
   "allOf": [
     {
       "if": {
-        "properties": { "category": { "const": "LATERAL_ENTRY" } },
+        "properties": {
+          "category": {
+            "const": "LATERAL_ENTRY"
+          }
+        },
         "required": ["category"]
       },
-      "then": { "properties": { "lateralCapacitySource": { "type": "string" } } },
-      "else": { "properties": { "lateralCapacitySource": { "type": "null" } } }
+      "then": {
+        "properties": {
+          "lateralCapacitySource": {
+            "type": "string"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "lateralCapacitySource": {
+            "type": "null"
+          }
+        }
+      }
     }
   ]
 }

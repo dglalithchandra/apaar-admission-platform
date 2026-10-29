@@ -1,3 +1,4 @@
+import { assertImportableApproval } from '@apaar-platform/admission-domain';
 import { ADMISSION_VALIDATION_PROFILE_VERSION } from '../model.js';
 import { setTimeout as delay } from 'node:timers/promises';
 import type {
@@ -325,8 +326,8 @@ class PostgresAdmissionTransaction implements AdmissionTransaction {
         id, idempotency_record_id, institution_id, campus_id, programme_id, course_id,
         academic_year_code, student_key, admission_date, category, lateral_capacity_source,
         eligibility_evidence, student_status, request_hash, correlation_reference,
-        request_reference, received_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+        request_reference, received_at, category_evidence_check
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
       [
         admission.commandId,
         r.idempotencyRecordId,
@@ -345,6 +346,7 @@ class PostgresAdmissionTransaction implements AdmissionTransaction {
         context.correlationReference,
         context.requestReference,
         outcome.occurredAt,
+        admission.categoryEvidenceCheck ?? null,
       ],
     );
     await this.client.query(
@@ -608,6 +610,7 @@ export class PostgresAdmissionStore implements AdmissionUnitOfWork, ApprovalSnap
 
   public async importSnapshot(command: ApprovalImportCommand): Promise<void> {
     const snapshot = command.snapshot;
+    assertImportableApproval(snapshot);
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');

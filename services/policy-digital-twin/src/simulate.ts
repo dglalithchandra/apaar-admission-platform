@@ -1,5 +1,8 @@
 import {
   ADMISSION_RULESET_VERSION,
+  validateApprovalCapacity,
+  HANDBOOK_SOURCE,
+  type HypotheticalCapacityPolicy,
   emptyCapacityUsage,
   evaluateAdmissionPolicy,
   type AdmissionCategory,
@@ -84,6 +87,7 @@ function run(
   approval: ApprovalSnapshot,
   admissions: readonly StudentAdmission[],
   initialUsage: CapacityUsage,
+  amendment?: HypotheticalCapacityPolicy,
 ): RunResult {
   let usage = { ...initialUsage };
   const decisions: RunDecision[] = [];
@@ -93,6 +97,7 @@ function run(
       approval,
       evaluatedAt: admission.identityVerification.checkedAt,
       usage,
+      ...(amendment ? { hypotheticalCapacityPolicy: amendment } : {}),
     });
     decisions.push({ admission, decision });
     if (decision.reservation !== null) {
@@ -158,11 +163,11 @@ function ruleImpacts(baseline: RunResult, proposed: RunResult): readonly RuleImp
     .sort((left, right) => Math.abs(right.delta) - Math.abs(left.delta));
 }
 
-function explanation(proposed: AdmissionPolicyDecision): string {
-  const finding = proposed.findings.find(({ severity }) => severity !== 'INFO');
-  return (
-    finding?.message ?? 'The proposed capacity configuration makes this admission policy-valid.'
-  );
+function explanation(decision: AdmissionPolicyDecision): string {
+  const blockers = decision.findings.filter(({ severity }) => severity !== 'INFO');
+  return blockers.length
+    ? blockers.map((f) => `${f.code}: ${f.message}`).join(' ')
+    : `${decision.outcome}: reserves ${String(decision.reservation === null ? 0 : 1)} seat in ${decision.reservation?.bucket ?? 'no bucket'} under this scenario's recorded capacities; this is not an authorization.`;
 }
 
 function capacityRejections(runResult: RunResult): number {
@@ -179,6 +184,9 @@ export function simulatePolicyScenario(input: {
   readonly scenario: PolicyScenario;
   readonly initialUsage?: CapacityUsage;
 }): SimulationResult {
+  const status = input.scenario.kind ?? 'CURRENT_RULE_CONFIGURATION';
+  if ((status === 'HYPOTHETICAL_AMENDMENT') !== (input.scenario.amendment !== undefined))
+    throw new TypeError('An amendment must be explicitly declared with its proposed rule context.');
   const initialUsage = input.initialUsage ?? emptyCapacityUsage();
   if (Object.values(initialUsage).some((value) => !Number.isSafeInteger(value) || value < 0)) {
     throw new TypeError('Initial occupied capacity must contain non-negative whole numbers.');
@@ -192,10 +200,20 @@ export function simulatePolicyScenario(input: {
     keys.add(admission.studentKey);
   }
   const baseline = run(input.baselineApproval, input.cohort.admissions, initialUsage);
-  const proposed = run(input.scenario.proposedApproval, input.cohort.admissions, initialUsage);
+  const proposed = run(
+    input.scenario.proposedApproval,
+    input.cohort.admissions,
+    initialUsage,
+    input.scenario.amendment,
+  );
   const reversed = [...input.cohort.admissions].reverse();
   const reverseBaseline = run(input.baselineApproval, reversed, initialUsage);
-  const reverseProposed = run(input.scenario.proposedApproval, reversed, initialUsage);
+  const reverseProposed = run(
+    input.scenario.proposedApproval,
+    reversed,
+    initialUsage,
+    input.scenario.amendment,
+  );
   const changes = (forward: RunResult, backward: RunResult): number => {
     const outcomes = new Map(
       backward.decisions.map((item) => [item.admission.studentKey, item.decision.outcome]),
@@ -213,7 +231,10 @@ export function simulatePolicyScenario(input: {
       {
         baseline: item.decision.outcome,
         category: item.admission.category,
-        explanation: explanation(changed.decision),
+        explanation:
+          'Before: ' + explanation(item.decision) + ' After: ' + explanation(changed.decision),
+        baselineRuleCodes: item.decision.findings.map((f) => f.code),
+        proposedRuleCodes: changed.decision.findings.map((f) => f.code),
         proposed: changed.decision.outcome,
         studentKey: item.admission.studentKey,
       },
@@ -221,6 +242,18 @@ export function simulatePolicyScenario(input: {
   });
 
   return {
+    proposalStatus: status,
+    reproduction: structuredClone({
+      ...input,
+      initialUsage,
+      source: HANDBOOK_SOURCE,
+      rulesetVersion: ADMISSION_RULESET_VERSION,
+    }),
+    baselineConfigurationFindings: validateApprovalCapacity(input.baselineApproval),
+    proposedConfigurationFindings: validateApprovalCapacity(
+      input.scenario.proposedApproval,
+      input.scenario.amendment,
+    ),
     initialUsage: { ...initialUsage },
     orderingSensitivity: {
       baselineChangedStudents: changes(baseline, reverseBaseline),

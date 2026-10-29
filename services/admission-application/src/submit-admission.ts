@@ -1,3 +1,4 @@
+import { assertImportableApproval } from '@apaar-platform/admission-domain';
 import { ADMISSION_VALIDATION_PROFILE_VERSION } from './model.js';
 import {
   evaluateAdmissionPolicy,
@@ -160,6 +161,7 @@ export class ImportApprovalSnapshotService {
     ) {
       throw new TypeError('A superseded snapshot and reason must be supplied together.');
     }
+    assertImportableApproval(command.snapshot);
     await this.writer.importSnapshot(command);
   }
 }

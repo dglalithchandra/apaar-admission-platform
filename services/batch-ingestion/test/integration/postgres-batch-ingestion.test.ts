@@ -170,7 +170,7 @@ describe('PostgreSQL batch ingestion journey', () => {
   it('migrates over Stage 2 and repeats without reapplying', async () => {
     expect(initiallyApplied).toEqual(['0002_student_batch_ingestion.sql']);
     await expect(migrate(pool, batchMigrations)).resolves.toEqual([]);
-    expect(await tableCount('schema_migrations')).toBe(4);
+    expect(await tableCount('schema_migrations')).toBe(5);
   });
 
   it('runs a valid upload through identity verification and the Stage 2 admission service', async () => {
@@ -196,7 +196,8 @@ describe('PostgreSQL batch ingestion journey', () => {
 
   it('reconciles accepted, rejected, manual-review and invalid rows', async () => {
     const csv = csvFile(
-      csvRow('ACCEPTED', { category: 'TFW' }),
+      csvRow('ACCEPTED'),
+      csvRow('DECLARED-TFW', { category: 'TFW' }),
       csvRow('REJECTED', { category: 'NRI' }),
       csvRow('REVIEW', { category: 'OTHER_SUPERNUMERARY' }),
       csvRow('INVALID', { student_reference: '' }),
@@ -209,13 +210,17 @@ describe('PostgreSQL batch ingestion journey', () => {
       accepted: 1,
       failedFinal: 0,
       invalid: 1,
-      manualReview: 1,
+      manualReview: 2,
       pending: 0,
       rejected: 1,
       retryable: 0,
-      total: 4,
+      total: 5,
     });
     expect(await tableCount('capacity_reservations')).toBe(1);
+    const declared = (await batchRepository.listRows(batchId)).find((row) =>
+      row.findings.some((f) => f.code === 'ELIGIBILITY_EVIDENCE_PENDING'),
+    );
+    expect(declared?.status).toBe('MANUAL_REVIEW');
   });
 
   it('returns the original receipt for identical replay and duplicate digest', async () => {

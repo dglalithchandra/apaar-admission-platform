@@ -1,4 +1,4 @@
-export const ADMISSION_VALIDATION_PROFILE_VERSION = 'student-conflicts/2';
+export const ADMISSION_VALIDATION_PROFILE_VERSION = 'handbook-evidence/3';
 import type {
   AdmissionPolicyDecision,
   ApprovalSnapshot,

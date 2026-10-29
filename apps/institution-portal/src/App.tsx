@@ -401,7 +401,8 @@ export function App({
                 </div>
                 <p className="guidance">
                   Maximum 5 MB and 10,000 rows. Use UTF-8 CSV. Do not include names, dates of birth,
-                  Aadhaar numbers or contact details.
+                  Aadhaar numbers or contact details. Category eligibility values in the CSV are
+                  institution declarations; even VERIFIED requires a separate accountable check.
                 </p>
                 <div
                   className="dropzone"

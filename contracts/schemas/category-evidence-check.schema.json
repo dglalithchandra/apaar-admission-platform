@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/internal/category-evidence-check/v1",
+  "title": "Internal category evidence provenance v1",
+  "description": "Trusted service/storage contract. Never accepted from institutional upload input.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["method", "evidenceReference", "reviewerReference", "checkedAt"],
+  "properties": {
+    "method": {
+      "enum": ["INDEPENDENT_REVIEW", "SYNTHETIC_FIXTURE"]
+    },
+    "evidenceReference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reviewerReference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "checkedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

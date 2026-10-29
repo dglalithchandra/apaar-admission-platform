@@ -124,6 +124,7 @@ describe('Stage 5 PostgreSQL integration foundation', () => {
       '0014_verification_receipt_grant_expiry.sql',
       '0015_verified_academic_identity_bindings.sql',
       '0016_synthetic_identity_binding_backfill.sql',
+      '0017_category_evidence_provenance.sql',
     ]);
     for (const directory of migrationDirectories)
       await expect(migrate(pool, directory)).resolves.toEqual([]);

@@ -228,7 +228,7 @@ class FixedAdmissionReferences implements ReferenceGenerator {
 function approval(
   institutionSuffix: string,
   routeSuffix: string,
-  ordinaryIntake = 5,
+  ordinaryIntake = 20,
 ): ApprovalSnapshot {
   const institutionId = asInstitutionId(`SYNTH-INST-${institutionSuffix}`);
   const campusId = asCampusId(`SYNTH-CAMPUS-${routeSuffix}`);
@@ -247,17 +247,17 @@ function approval(
     effectiveFrom: asIsoDate('2026-04-01'),
     effectiveTo: asIsoDate('2027-03-31'),
     fnOciGulf: {
-      approved: true,
-      combinedTotalCapacity: 4,
-      foreignAndOciCapacity: 3,
-      foreignNationalAcrossRoutesMaximum: 4,
-      gulfCapacity: 1,
+      approved: false,
+      combinedTotalCapacity: 0,
+      foreignAndOciCapacity: 0,
+      foreignNationalAcrossRoutesMaximum: 0,
+      gulfCapacity: 0,
     },
     id: asApprovalSnapshotId(`SYNTH-APPROVAL-${routeSuffix}`),
     importBatchReference: `SYNTH-IMPORT-${routeSuffix}`,
     institution: { id: institutionId, name: `Synthetic Institute ${institutionSuffix}` },
-    lateral: { approved: true, firstYearVacancyCapacity: 1, supernumeraryCapacity: 2 },
-    nri: { approved: true, maximumWithinOrdinary: Math.min(2, ordinaryIntake) },
+    lateral: { approved: false, firstYearVacancyCapacity: 0, supernumeraryCapacity: 0 },
+    nri: { approved: ordinaryIntake === 20, maximumWithinOrdinary: ordinaryIntake === 20 ? 1 : 0 },
     ordinaryIntake,
     pmUspy: { approved: true, courseCapacity: 2, institutionCapacity: 10 },
     policyVersion: 'SYNTH-ADMISSION-POLICY-2026',
@@ -271,7 +271,7 @@ function approval(
     sourceRecordId: `SYNTH-SOURCE-RECORD-${routeSuffix}`,
     sourceSystem: 'SYNTHETIC-SOURCE',
     supersededBy: null,
-    tfw: { approved: true, capacity: 2, precedingYearMinimumFillSatisfied: true },
+    tfw: { approved: false, capacity: 0, precedingYearMinimumFillSatisfied: true },
   };
 }
 
@@ -289,6 +289,12 @@ function submission(
       category,
       commandId: asAdmissionCommandId(`SYNTH-COMMAND-${suffix}`),
       courseId: route.course.id,
+      categoryEvidenceCheck: {
+        method: 'SYNTHETIC_FIXTURE',
+        evidenceReference: 'SYNTH-CATEGORY-EVIDENCE',
+        reviewerReference: 'SYNTH-REVIEWER',
+        checkedAt: asIsoDateTime('2026-07-01T00:00:00Z'),
+      },
       eligibilityEvidence: 'VERIFIED',
       identityVerification: {
         checkedAt: asIsoDateTime('2026-08-01T08:00:00.000Z'),

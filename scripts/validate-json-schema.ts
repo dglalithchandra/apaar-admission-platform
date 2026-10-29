@@ -5,6 +5,7 @@ import addFormats from 'ajv-formats';
 const ajv = new Ajv2020({ allErrors: true, strict: true });
 addFormats(ajv);
 const paths = [
+  'contracts/schemas/category-evidence-check.schema.json',
   'contracts/schemas/student-admission.schema.json',
   'contracts/schemas/batch-admission-row.schema.json',
   'contracts/schemas/admission-casework.schema.json',

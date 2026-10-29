@@ -15,7 +15,7 @@ mistaken for regulatory authority.
 
 Add a side-effect-free `policy-digital-twin` module. It replays the identical ordered cohort through
 two immutable approval snapshots using the production admission policy engine. One snapshot is the
-approved baseline; the other is explicitly proposed. Each run maintains independent in-memory
+source-aligned synthetic baseline; the other is explicitly proposed. Each run maintains independent in-memory
 capacity usage and returns aggregate outcomes, category impacts, changed decisions and changed rule
 counts.
 
@@ -32,3 +32,7 @@ that no ledger write occurs, and never recommends or activates policy automatica
 - Current evidence demonstrates one synthetic course-level cohort, not national forecasting.
 - Production use would require approved, privacy-reviewed aggregate cohorts, signed scenario
   provenance and accountable policy approval outside the simulator.
+
+## Handbook reconciliation
+
+See [ADR-0024](ADR-0024-handbook-capacity-and-evidence-boundaries.md) for current-rule ceilings, hypothetical amendment separation, replay inputs and evidence provenance. Earlier numerical presentation snapshots are superseded.

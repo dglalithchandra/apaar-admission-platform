@@ -88,6 +88,12 @@ function admission(
     category,
     commandId: asAdmissionCommandId(`SYNTH-COMMAND-${suffix}`),
     courseId: IDS.course,
+    categoryEvidenceCheck: {
+      method: 'SYNTHETIC_FIXTURE',
+      evidenceReference: 'SYNTH-CATEGORY-EVIDENCE',
+      reviewerReference: 'SYNTH-REVIEWER',
+      checkedAt: asIsoDateTime('2026-07-01T00:00:00Z'),
+    },
     eligibilityEvidence: category === 'ORDINARY' ? 'VERIFIED' : 'VERIFIED',
     identityVerification: {
       checkedAt: asIsoDateTime('2026-07-01T10:00:00Z'),
@@ -111,8 +117,8 @@ function admission(
 
 describe('policy digital twin', () => {
   it('replays the same synthetic cohort through baseline and proposed policy without mutations', () => {
-    const baseline = approval('SYNTH-APPROVAL-BASELINE', 2, 1);
-    const proposed = approval('SYNTH-APPROVAL-PROPOSED', 4, 2);
+    const baseline = approval('SYNTH-APPROVAL-BASELINE', 20, 1);
+    const proposed = approval('SYNTH-APPROVAL-PROPOSED', 40, 2);
     const admissions = [
       admission('NRI-1', 'NRI'),
       admission('NRI-2', 'NRI'),
@@ -125,6 +131,7 @@ describe('policy digital twin', () => {
     ];
 
     const result = simulatePolicyScenario({
+      initialUsage: { ...emptyCapacityUsage(), ordinaryUsed: 18 },
       baselineApproval: baseline,
       cohort: { admissions, reference: 'SYNTH-COHORT-001' },
       scenario: {
@@ -154,9 +161,10 @@ describe('policy digital twin', () => {
       liveLedgerMutated: false,
       usesSyntheticCohort: true,
     });
-    expect(baseline.ordinaryIntake).toBe(2);
+    expect(baseline.ordinaryIntake).toBe(20);
 
     const restrictive = simulatePolicyScenario({
+      initialUsage: { ...emptyCapacityUsage(), ordinaryUsed: 18 },
       baselineApproval: baseline,
       cohort: { admissions, reference: 'SYNTH-COHORT-RESTRICTIVE' },
       scenario: {
@@ -170,7 +178,7 @@ describe('policy digital twin', () => {
   });
 
   it('accounts for every capacity bucket and preserves manual-review outcomes', () => {
-    const rich = approval('SYNTH-APPROVAL-RICH', 5, 2);
+    const rich = approval('SYNTH-APPROVAL-RICH', 40, 2);
     const foreignLateral = {
       ...admission('LAT-FN', 'LATERAL_ENTRY', 'LATERAL_SUPERNUMERARY'),
       studentStatus: {
@@ -233,8 +241,8 @@ describe('policy digital twin', () => {
 
 describe('simulation assumptions', () => {
   it('uses occupied seats without mutating input and exposes ordering sensitivity', () => {
-    const base = approval('SYNTH-OCCUPIED', 2, 1);
-    const occupied = { ...emptyCapacityUsage(), ordinaryUsed: 1 };
+    const base = approval('SYNTH-OCCUPIED', 20, 1);
+    const occupied = { ...emptyCapacityUsage(), ordinaryUsed: 19 };
     const input = {
       baselineApproval: base,
       cohort: {
@@ -254,8 +262,8 @@ describe('simulation assumptions', () => {
     };
     const result = simulatePolicyScenario(input);
     expect(result.baseline.accepted).toBe(1);
-    expect(result.finalBaselineUsage.ordinaryUsed).toBe(2);
-    expect(occupied.ordinaryUsed).toBe(1);
+    expect(result.finalBaselineUsage.ordinaryUsed).toBe(20);
+    expect(occupied.ordinaryUsed).toBe(19);
     expect(result.orderingSensitivity.baselineChangedStudents).toBe(2);
     expect(result.orderingSensitivity.proposedChangedStudents).toBe(2);
     expect(result.orderingSensitivity.reversedBaselineAccepted).toBe(1);
@@ -274,5 +282,55 @@ describe('simulation assumptions', () => {
         },
       }),
     ).toThrow('repeated student');
+  });
+});
+
+describe('authority boundary and reproducibility', () => {
+  it('blocks old sixty/five/six configuration and separately labels an explicit amendment', () => {
+    const base = approval('SYNTH-SOURCE-BASELINE', 60, 3);
+    const proposed = {
+      ...base,
+      nri: { approved: true, maximumWithinOrdinary: 5 },
+      tfw: { ...base.tfw, capacity: 6 },
+    };
+    const input = {
+      baselineApproval: base,
+      cohort: { reference: 'SYNTH-BOUNDARY', admissions: [admission('SYNTH-NRI', 'NRI')] },
+      scenario: {
+        reference: 'SYNTH-CHANGE',
+        name: 'SYNTH-CHANGE',
+        rationale: 'SYNTH-TEST',
+        proposedApproval: proposed,
+      },
+    };
+    const original = JSON.stringify(input);
+    const blocked = simulatePolicyScenario(input);
+    expect(blocked.baseline.accepted).toBe(1);
+    expect(blocked.proposed.rejected).toBe(1);
+    expect(blocked.proposedConfigurationFindings).toHaveLength(2);
+    const amendment = {
+      reference: 'SYNTH-AMENDMENT',
+      rationale: 'SYNTH-NOT-AUTHORIZED',
+      nriPercent: 10,
+      tfwPercent: 10,
+    };
+    expect(() =>
+      simulatePolicyScenario({ ...input, scenario: { ...input.scenario, amendment } }),
+    ).toThrow('explicitly declared');
+    expect(() =>
+      simulatePolicyScenario({
+        ...input,
+        scenario: { ...input.scenario, kind: 'HYPOTHETICAL_AMENDMENT' },
+      }),
+    ).toThrow('explicitly declared');
+    const hypothetical = simulatePolicyScenario({
+      ...input,
+      scenario: { ...input.scenario, kind: 'HYPOTHETICAL_AMENDMENT', amendment },
+    });
+    expect(hypothetical.proposalStatus).toBe('HYPOTHETICAL_AMENDMENT');
+    expect(hypothetical.proposed.accepted).toBe(1);
+    expect(JSON.stringify(input)).toBe(original);
+    expect(simulatePolicyScenario(hypothetical.reproduction)).toEqual(hypothetical);
+    expect(blocked.transitions[0]?.explanation).toContain('APPROVAL_CONFIGURATION_INVALID');
   });
 });

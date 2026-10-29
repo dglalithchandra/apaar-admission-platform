@@ -84,6 +84,12 @@ export function syntheticCommand(
       category,
       commandId: asAdmissionCommandId(`SYNTH-CMD-${suffix}`),
       courseId: approval.course.id,
+      categoryEvidenceCheck: {
+        method: 'SYNTHETIC_FIXTURE',
+        evidenceReference: 'SYNTH-CATEGORY-EVIDENCE',
+        reviewerReference: 'SYNTH-REVIEWER',
+        checkedAt: asIsoDateTime('2026-07-01T00:00:00Z'),
+      },
       eligibilityEvidence: 'VERIFIED',
       identityVerification: {
         checkedAt: asIsoDateTime('2026-08-01T08:00:00.000Z'),

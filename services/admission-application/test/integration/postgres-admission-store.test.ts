@@ -1,3 +1,4 @@
+import { simulatePolicyScenario } from '../../../policy-digital-twin/src/index.js';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
@@ -95,14 +96,82 @@ describe('PostgreSQL admission persistence', () => {
     await new ImportApprovalSnapshotService(store).execute({ snapshot: syntheticApproval() });
   });
 
+  it('rejects unsupported capacities before any import writes, even on the concrete store', async () => {
+    const before = await count('approval_snapshots');
+    for (const change of [
+      { nri: { approved: true, maximumWithinOrdinary: 5 } },
+      { tfw: { approved: true, capacity: 6, precedingYearMinimumFillSatisfied: true } },
+      { ordinaryIntake: 61 },
+    ]) {
+      const snapshot = syntheticApproval({
+        ...change,
+        id: asApprovalSnapshotId('SYNTH-INVALID-IMPORT'),
+      });
+      await expect(store.importSnapshot({ snapshot })).rejects.toThrow(/APPROVAL_/);
+      await expect(new ImportApprovalSnapshotService(store).execute({ snapshot })).rejects.toThrow(
+        /APPROVAL_/,
+      );
+    }
+    expect(await count('approval_snapshots')).toBe(before);
+    expect(await count('business_audit_events')).toBe(0);
+    expect(await count('outbox_events')).toBe(0);
+    expect(await allocation('ORDINARY')).toBe(0);
+  });
+
+  it('persists category-check provenance and refuses an unproven VERIFIED assertion', async () => {
+    const command = syntheticCommand('SYNTH-CHECK-PROVENANCE', 'NRI');
+    const { categoryEvidenceCheck: check, ...unproven } = command.admission;
+    const review = await service.execute({ ...command, admission: unproven });
+    expect(review.decision.outcome).toBe('MANUAL_REVIEW');
+    expect(await allocation('ORDINARY')).toBe(0);
+    expect(await allocation('NRI_WITHIN_ORDINARY')).toBe(0);
+    const verified = syntheticCommand('SYNTH-CHECK-VERIFIED', 'NRI');
+    expect((await service.execute(verified)).decision.outcome).toBe('ACCEPT');
+    const saved = await pool.query<{ category_evidence_check: unknown }>(
+      'SELECT category_evidence_check FROM admission_commands WHERE id = $1',
+      [verified.admission.commandId],
+    );
+    expect(saved.rows[0]?.category_evidence_check).toEqual(check);
+  });
+
+  it('runs simulations against recorded inputs without any ledger, audit or outbox writes', async () => {
+    const snapshot = syntheticApproval();
+    const capture = async () => ({
+      commands: await count('admission_commands'),
+      decisions: await count('admission_decisions'),
+      reservations: await count('capacity_reservations'),
+      audit: await count('business_audit_events'),
+      outbox: await count('outbox_events'),
+      ordinary: await allocation('ORDINARY'),
+    });
+    const before = await capture();
+    const result = simulatePolicyScenario({
+      baselineApproval: snapshot,
+      cohort: {
+        reference: 'SYNTH-NO-WRITES',
+        admissions: [syntheticCommand('SYNTH-SIMULATION').admission],
+      },
+      scenario: {
+        reference: 'SYNTH-NO-WRITES',
+        name: 'SYNTH-CONTROL',
+        rationale: 'SYNTH-READ-ONLY',
+        proposedApproval: snapshot,
+      },
+    });
+    expect(result.proposed.accepted).toBe(1);
+    expect(simulatePolicyScenario(result.reproduction)).toEqual(result);
+    expect(await capture()).toEqual(before);
+  });
+
   it('migrates an empty PostgreSQL database and is repeatable', async () => {
     expect(initiallyApplied).toEqual([
       '0001_admission_registry.sql',
       '0010_student_identity_guards.sql',
       '0015_verified_academic_identity_bindings.sql',
+      '0017_category_evidence_provenance.sql',
     ]);
     await expect(migrate(pool, migrationsDirectory)).resolves.toEqual([]);
-    await expect(count('schema_migrations')).resolves.toBe(3);
+    await expect(count('schema_migrations')).resolves.toBe(4);
   });
 
   it('blocks the same student with fresh request identifiers and reserves one seat', async () => {

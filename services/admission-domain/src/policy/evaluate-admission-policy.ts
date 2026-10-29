@@ -7,6 +7,10 @@ import type {
 } from '../model/entities.js';
 import type { IsoDateTime } from '../model/identifiers.js';
 import {
+  validateApprovalCapacity,
+  type HypotheticalCapacityPolicy,
+} from './validate-approval-capacity.js';
+import {
   RULE_CODES,
   type AdmissionPolicyDecision,
   type RuleAuthority,
@@ -15,13 +19,14 @@ import {
   type ValidationSeverity,
 } from '../model/validation.js';
 
-export const ADMISSION_RULESET_VERSION = '2026.10-stage1';
+export const ADMISSION_RULESET_VERSION = '2026.10-handbook-capacity-2';
 
 export interface AdmissionPolicyInput {
   readonly admission: StudentAdmission;
   readonly approval: ApprovalSnapshot | null;
   readonly usage: CapacityUsage;
   readonly evaluatedAt: IsoDateTime;
+  readonly hypotheticalCapacityPolicy?: HypotheticalCapacityPolicy;
 }
 
 interface CategoryEvaluation {
@@ -73,32 +78,6 @@ function makeDecision(
 
 function isNonNegativeInteger(value: number): boolean {
   return Number.isInteger(value) && value >= 0;
-}
-
-function hasValidCapacityConfiguration(approval: ApprovalSnapshot): boolean {
-  const capacities = [
-    approval.ordinaryIntake,
-    approval.nri.maximumWithinOrdinary,
-    approval.fnOciGulf.foreignAndOciCapacity,
-    approval.fnOciGulf.gulfCapacity,
-    approval.fnOciGulf.combinedTotalCapacity,
-    approval.fnOciGulf.foreignNationalAcrossRoutesMaximum,
-    approval.lateral.supernumeraryCapacity,
-    approval.lateral.firstYearVacancyCapacity,
-    approval.tfw.capacity,
-    approval.pmUspy.courseCapacity,
-    approval.pmUspy.institutionCapacity,
-  ];
-
-  return (
-    capacities.every(isNonNegativeInteger) &&
-    approval.nri.maximumWithinOrdinary <= approval.ordinaryIntake &&
-    approval.fnOciGulf.foreignAndOciCapacity + approval.fnOciGulf.gulfCapacity <=
-      approval.fnOciGulf.combinedTotalCapacity &&
-    approval.pmUspy.courseCapacity <= approval.pmUspy.institutionCapacity &&
-    approval.pmUspy.courseCapacity <= 2 &&
-    approval.pmUspy.institutionCapacity <= 10
-  );
 }
 
 function assertValidUsage(usage: CapacityUsage): void {
@@ -189,11 +168,21 @@ function evaluateEligibilityEvidence(admission: StudentAdmission): ValidationFin
     ];
   }
 
-  if (admission.eligibilityEvidence === 'PENDING') {
+  const check = admission.categoryEvidenceCheck;
+  const checked =
+    check !== undefined &&
+    check.evidenceReference.trim().length > 0 &&
+    check.reviewerReference.trim().length > 0 &&
+    Number.isFinite(Date.parse(check.checkedAt)) &&
+    (check.method === 'INDEPENDENT_REVIEW' ||
+      (admission.studentKey.startsWith('SYNTH-') &&
+        check.evidenceReference.startsWith('SYNTH-') &&
+        check.reviewerReference.startsWith('SYNTH-')));
+  if (admission.eligibilityEvidence === 'PENDING' || !checked) {
     return [
       unknownReview(
         RULE_CODES.ELIGIBILITY_EVIDENCE_PENDING,
-        'Eligibility evidence is pending review.',
+        'Category eligibility has not been independently checked with accountable evidence provenance. An institution declaration is insufficient.',
       ),
     ];
   }
@@ -635,19 +624,6 @@ export function evaluateAdmissionPolicy(input: AdmissionPolicyInput): AdmissionP
     );
   }
 
-  if (!hasValidCapacityConfiguration(input.approval)) {
-    return makeDecision(
-      input,
-      [
-        configuredError(
-          RULE_CODES.APPROVAL_CONFIGURATION_INVALID,
-          'The approval snapshot contains inconsistent or invalid absolute capacities.',
-        ),
-      ],
-      null,
-    );
-  }
-
   if (!approvalMatchesAdmission(input.approval, input.admission)) {
     return makeDecision(
       input,
@@ -676,6 +652,7 @@ export function evaluateAdmissionPolicy(input: AdmissionPolicyInput): AdmissionP
 
   const category = evaluateCategory(input.admission, input.approval, input.usage);
   const findings = [
+    ...validateApprovalCapacity(input.approval, input.hypotheticalCapacityPolicy),
     evaluateIdentity(input.admission),
     ...evaluateCategoryStatus(input.admission),
     ...evaluateEligibilityEvidence(input.admission),

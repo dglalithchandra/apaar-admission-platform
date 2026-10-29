@@ -45,3 +45,7 @@ The product should label rules as:
 - when an over-capacity row is rejected, held for review or accepted under a formally approved exception;
 - source hierarchy when AICTE, a State/UT authority and an institution provide conflicting data;
 - appeal, reopening and final-submission authority.
+
+## Executable boundary (29 October 2026)
+
+[ADR-0024](../architecture/decisions/ADR-0024-handbook-capacity-and-evidence-boundaries.md) maps these source facts to shared snapshot/import validation. For a 60-seat configuration, the five-percent NRI and TFW ceilings are three each. No rounding or bucket-transfer exception has been authorized in this repository. Scenario amendments must never be imported as current rules.

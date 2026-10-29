@@ -78,6 +78,14 @@ export type LateralCapacitySource = 'LATERAL_SUPERNUMERARY' | 'LATERAL_FIRST_YEA
 
 export type EligibilityEvidenceStatus = 'VERIFIED' | 'PENDING' | 'MISSING';
 
+/** Trusted application assessment; never accepted from a CSV declaration. */
+export interface CategoryEvidenceCheck {
+  readonly method: 'INDEPENDENT_REVIEW' | 'SYNTHETIC_FIXTURE';
+  readonly evidenceReference: string;
+  readonly reviewerReference: string;
+  readonly checkedAt: IsoDateTime;
+}
+
 export type AdmissionLifecycleStatus =
   'DRAFT' | 'PENDING_IDENTITY' | 'UNDER_REVIEW' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED';
 
@@ -101,6 +109,7 @@ export interface StudentAdmission {
   readonly lateralCapacitySource: LateralCapacitySource | null;
   readonly studentStatus: StudentStatus;
   readonly eligibilityEvidence: EligibilityEvidenceStatus;
+  readonly categoryEvidenceCheck?: CategoryEvidenceCheck;
   readonly identityVerification: AcademicIdentityVerification;
   readonly lifecycleStatus: AdmissionLifecycleStatus;
 }

@@ -50,12 +50,12 @@ No real student data, credentials or official AICTE/APAAR branding are present.
 ## SIH judge pack
 
 - [Judge setup and complete role-by-role walkthrough](JUDGE_GUIDE.md)
-- [Six-slide NiyamSetu SIH 2026 presentation](docs/hackathon/NiyamSetu_SIH_2026.pptx) (editable PowerPoint)
+- [Current reconciled six-slide presentation](docs/hackathon/ASTRAL_NiyamSetu_SIH_2026_Reconciled.pptx) (editable PowerPoint)
 - [Legacy recorded walkthrough](docs/hackathon/APAAR_SIH_2026_walkthrough.webm) (shows the earlier Admission Registry name) and [current NiyamSetu narration script](docs/hackathon/VIDEO_SCRIPT.md)
 - [Legacy plain-language project guide](docs/hackathon/APAAR_Platform_Simple_Guide.pdf) (shows the earlier Admission Registry name)
 - [Presentation research and design rationale](docs/hackathon/SIH_PRESENTATION_RESEARCH.md)
 
-The rebranded presentation preserves the SIH 2026 six-slide format and changes only its product name and cover tagline; the original chart and other package entries are retained. Fill the team name and team ID placeholders before submission. The linked PDF, screenshots and silent walkthrough are earlier Admission Registry assets and must be regenerated before presenting them as NiyamSetu materials. The recording uses only local synthetic records. Official identity, sign-in and signing services are not connected.
+The current ASTRAL presentation preserves the six-slide format and updates the policy chart and screenshots. Set the assigned team ID before submission. Earlier decks are superseded. The linked PDF, screenshots and silent walkthrough are earlier Admission Registry assets and must be regenerated before presenting them as NiyamSetu materials. The recording uses only local synthetic records. Official identity, sign-in and signing services are not connected.
 
 ## Current verification improvements
 
@@ -115,4 +115,10 @@ Do not commit APAAR, Aadhaar, names, dates of birth, mobile numbers, emails, sig
 
 ## Current ASTRAL submission material
 
-The reviewed six-slide deck is [ASTRAL_NiyamSetu_SIH_2026.pptx](docs/hackathon/ASTRAL_NiyamSetu_SIH_2026.pptx). The [short browser walkthrough](docs/hackathon/ASTRAL_NiyamSetu_Walkthrough.webm) and [accurate narration script](docs/hackathon/ASTRAL_NiyamSetu_Walkthrough_Script.md) show only synthetic local data. The [judge guide](JUDGE_GUIDE.md) gives setup and role-by-role testing steps. The [operator study](docs/research/operator-study/README.md) is prepared for later, with zero sessions completed.
+The reviewed six-slide deck is [ASTRAL_NiyamSetu_SIH_2026_Reconciled.pptx](docs/hackathon/ASTRAL_NiyamSetu_SIH_2026_Reconciled.pptx). The [superseded browser walkthrough — do not submit as current evidence](docs/hackathon/ASTRAL_NiyamSetu_Walkthrough.webm) and [updated narration for re-recording](docs/hackathon/ASTRAL_NiyamSetu_Walkthrough_Script.md) show only synthetic local data. The [judge guide](JUDGE_GUIDE.md) gives setup and role-by-role testing steps. The [operator study](docs/research/operator-study/README.md) is prepared for later, with zero sessions completed.
+
+### Policy and evidence reconciliation
+
+The policy engine and transactional approval import now enforce the handbook capacity ceilings. A 60-seat fixture permits at most three ordinary NRI and three separate TFW seats under the current five-percent provisions. Policy Lab separates proposed configurations from explicitly unauthorized regulatory amendments and exposes all replay inputs and transitions. CSV category declarations never establish independent verification. See [ADR-0024](docs/architecture/decisions/ADR-0024-handbook-capacity-and-evidence-boundaries.md).
+
+Earlier recordings, PDFs and legacy presentations predate this correction and must not be used as current numerical evidence. Use the reconciled ASTRAL deck and updated scripts; record fresh footage from the corrected application before submission.

@@ -1,3 +1,5 @@
+> Updated narration for a new recording. The previous WebM is superseded and does not show these corrected inputs.
+
 # ASTRAL · NiyamSetu browser walkthrough
 
 **Runtime:** about 82 seconds. **Data:** synthetic. **Capture:** actual local browser frames at roughly two frames per second, followed by two clearly labelled still screens from the same browser build. The video has no spoken audio; read this script while presenting or record a voice-over.
@@ -6,7 +8,7 @@
 
 **0:15–0:29 — See the result.** “All three rows are rejected. Repeating an academic identity cannot quietly consume a second seat. Each row keeps its receipt and rule explanations. This is a local synthetic identity adapter, not the official APAAR service.”
 
-**0:29–0:44 — Compare policies.** “The reviewer can replay an 84-record synthetic cohort. In this example, the baseline accepts 68 records and the proposal accepts 77. These are scenario results, not measured national benefits. The policy lab never writes to the admission ledger.”
+**0:29–0:44 — Compare policies.** “The reviewer can replay an 84-record synthetic cohort. In this example, the baseline accepts 65 records and the proposed 80-seat configuration accepts 73. These are scenario results, not measured national benefits. These results use three baseline NRI and TFW seats each, rising to four each within current rules. A separate hypothetical amendment mode is visibly unauthorized. The policy lab never writes to the admission ledger.”
 
 **0:44–0:58 — Add occupied seats.** “When ten ordinary seats are already filled, the numbers change. The screen also checks the cohort in reverse order so we can see how order affects outcomes. Two orderings do not prove fairness.”
 

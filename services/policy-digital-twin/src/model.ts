@@ -1,5 +1,7 @@
+import type { ValidationFinding, HANDBOOK_SOURCE } from '@apaar-platform/admission-domain';
 import type {
   AdmissionCategory,
+  HypotheticalCapacityPolicy,
   AdmissionPolicyOutcome,
   ApprovalSnapshot,
   CapacityUsage,
@@ -8,6 +10,8 @@ import type {
 } from '@apaar-platform/admission-domain';
 
 export interface PolicyScenario {
+  readonly kind?: 'CURRENT_RULE_CONFIGURATION' | 'HYPOTHETICAL_AMENDMENT';
+  readonly amendment?: HypotheticalCapacityPolicy;
   readonly reference: string;
   readonly name: string;
   readonly rationale: string;
@@ -38,6 +42,8 @@ export interface OutcomeTransition {
   readonly baseline: AdmissionPolicyOutcome;
   readonly proposed: AdmissionPolicyOutcome;
   readonly explanation: string;
+  readonly baselineRuleCodes: readonly RuleCode[];
+  readonly proposedRuleCodes: readonly RuleCode[];
 }
 
 export interface RuleImpact {
@@ -48,6 +54,17 @@ export interface RuleImpact {
 }
 
 export interface SimulationResult {
+  readonly reproduction: {
+    readonly baselineApproval: ApprovalSnapshot;
+    readonly cohort: SimulationCohort;
+    readonly scenario: PolicyScenario;
+    readonly initialUsage: CapacityUsage;
+    readonly source: typeof HANDBOOK_SOURCE;
+    readonly rulesetVersion: string;
+  };
+  readonly baselineConfigurationFindings: readonly ValidationFinding[];
+  readonly proposedConfigurationFindings: readonly ValidationFinding[];
+  readonly proposalStatus: 'CURRENT_RULE_CONFIGURATION' | 'HYPOTHETICAL_AMENDMENT';
   readonly initialUsage: CapacityUsage;
   readonly orderingSensitivity: {
     readonly baselineChangedStudents: number;

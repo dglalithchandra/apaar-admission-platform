@@ -133,6 +133,12 @@ const referenceAdmission = await new SubmitAdmissionService(
     category: 'ORDINARY',
     commandId: asAdmissionCommandId('SYNTH-CMD-REFERENCE-001'),
     courseId: asCourseId('SYNTH-COURSE-001'),
+    categoryEvidenceCheck: {
+      method: 'SYNTHETIC_FIXTURE',
+      evidenceReference: 'SYNTH-CATEGORY-EVIDENCE',
+      reviewerReference: 'SYNTH-REVIEWER',
+      checkedAt: asIsoDateTime('2026-07-01T00:00:00Z'),
+    },
     eligibilityEvidence: 'VERIFIED',
     identityVerification: {
       checkedAt: asIsoDateTime('2026-07-01T08:00:00.000Z'),

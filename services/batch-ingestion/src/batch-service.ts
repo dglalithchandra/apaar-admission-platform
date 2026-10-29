@@ -260,7 +260,11 @@ export class BatchWorker {
           category: row.input.category,
           commandId: asAdmissionCommandId(`BATCH-${stable}`),
           courseId: row.input.courseId,
-          eligibilityEvidence: row.input.eligibilityEvidence,
+          // CSV status is an institution assertion, not independently reviewed evidence.
+          eligibilityEvidence:
+            row.input.eligibilityEvidence === 'VERIFIED'
+              ? 'PENDING'
+              : row.input.eligibilityEvidence,
           identityVerification: boundIdentity,
           institutionId: row.input.institutionId,
           lateralCapacitySource: row.input.lateralCapacitySource,
@@ -274,7 +278,7 @@ export class BatchWorker {
           correlationReference: `${row.batchId}-${String(row.rowNumber)}`,
           idempotencyKey: `ROW-${stable}`,
           institutionId: row.input.institutionId,
-          reason: row.reason,
+          reason: `${row.reason} Category evidence origin: INSTITUTION_DECLARATION; declared status: ${row.input.eligibilityEvidence}; independent assessment: NOT_CHECKED.`,
           requestHash: admissionHash(row, boundIdentity.status),
           requestReference: `${row.requestReference}-ROW-${String(row.rowNumber)}`,
         },

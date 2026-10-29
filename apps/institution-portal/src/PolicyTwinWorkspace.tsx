@@ -1,3 +1,4 @@
+import { HANDBOOK_SOURCE } from '@apaar-platform/admission-domain';
 import { useMemo, useState, type JSX } from 'react';
 import { BASELINE_LEVERS, runPolicyTwin } from './policy-twin-demo.js';
 
@@ -24,13 +25,17 @@ function Metric({
 }
 
 export function PolicyTwinWorkspace({ allowed }: { readonly allowed: boolean }): JSX.Element {
+  const [showAllTransitions, setShowAllTransitions] = useState(false);
   const [ordinaryOccupied, setOrdinaryOccupied] = useState(0);
-  const [ordinaryIntake, setOrdinaryIntake] = useState(66);
-  const [nriLimit, setNriLimit] = useState(7);
-  const [tfwCapacity, setTfwCapacity] = useState(9);
+  const [ordinaryIntake, setOrdinaryIntake] = useState(80);
+  const [nriLimit, setNriLimit] = useState(4);
+  const [tfwCapacity, setTfwCapacity] = useState(4);
+  const [kind, setKind] = useState<'CURRENT_RULE_CONFIGURATION' | 'HYPOTHETICAL_AMENDMENT'>(
+    'CURRENT_RULE_CONFIGURATION',
+  );
   const result = useMemo(
-    () => runPolicyTwin({ nriLimit, ordinaryIntake, tfwCapacity }, ordinaryOccupied),
-    [nriLimit, ordinaryIntake, tfwCapacity, ordinaryOccupied],
+    () => runPolicyTwin({ nriLimit, ordinaryIntake, tfwCapacity }, ordinaryOccupied, kind),
+    [nriLimit, ordinaryIntake, tfwCapacity, ordinaryOccupied, kind],
   );
   const maximum = Math.max(result.baseline.accepted, result.proposed.accepted, 1);
 
@@ -50,13 +55,57 @@ export function PolicyTwinWorkspace({ allowed }: { readonly allowed: boolean }):
           <p className="eyebrow">Admission Policy Digital Twin</p>
           <h1>Compare admission outcomes before changing a rule</h1>
           <p>
-            Replay one synthetic cohort through the approved baseline and a proposed policy. The
-            live admission ledger is never touched.
+            Replay one synthetic cohort through a source-aligned synthetic baseline and a proposed
+            configuration. The live admission ledger is never touched.
           </p>
         </div>
         <span className="twin-safety">Advisory only · zero live writes</span>
       </div>
 
+      <section className="panel twin-provenance" aria-label="Policy provenance">
+        <p>
+          Baseline: synthetic approval of 60 ordinary seats, three NRI seats within intake and three
+          separate TFW seats.
+        </p>
+        <p>
+          <a href={HANDBOOK_SOURCE.url}>AICTE handbook 2024–27</a> · PDF pages 34, 35, 70, 71, 75
+          and 76. Fixture: {result.baselineApprovalSnapshotId}, effective 1 January 2026. This is
+          source-aligned fictional data, not an official institution approval.
+        </p>
+        <label>
+          Proposal status
+          <select
+            value={kind}
+            onChange={(event) => {
+              setKind(event.target.value as typeof kind);
+            }}
+          >
+            <option value="CURRENT_RULE_CONFIGURATION">Configuration within current rules</option>
+            <option value="HYPOTHETICAL_AMENDMENT">Hypothetical regulatory amendment</option>
+          </select>
+        </label>
+        <p>
+          {kind === 'HYPOTHETICAL_AMENDMENT'
+            ? 'NOT AUTHORIZED: explores proposed 10% NRI and TFW ceilings. No live admission uses these rules.'
+            : 'Proposed configuration only, not an approved change. Current-rule ceilings apply. Inconsistent settings are blocked; fractional limits require review.'}
+        </p>
+      </section>
+      {result.proposedConfigurationFindings.length > 0 && (
+        <section className="error-summary" role="alert">
+          <strong>Proposal cannot be treated as authorized capacity</strong>
+          {result.proposedConfigurationFindings.map((f, i) => (
+            <p key={i}>
+              {f.code}: {f.message}
+            </p>
+          ))}
+        </section>
+      )}
+      <details className="panel">
+        <summary>Recorded inputs and source provenance — reproduce this result</summary>
+        <pre style={{ overflowX: 'auto', maxHeight: '24rem' }}>
+          {JSON.stringify(result.reproduction, null, 2)}
+        </pre>
+      </details>
       <aside className="twin-note" aria-label="Simulation assumptions">
         <strong>Scenario evidence, not a forecast.</strong> This replay starts with{' '}
         {ordinaryOccupied} occupied ordinary seats; other capacity buckets start empty and uses a
@@ -74,17 +123,18 @@ export function PolicyTwinWorkspace({ allowed }: { readonly allowed: boolean }):
           <button
             className="button button--secondary"
             onClick={() => {
+              setKind('CURRENT_RULE_CONFIGURATION');
               setOrdinaryOccupied(0);
-              setOrdinaryIntake(66);
-              setNriLimit(7);
-              setTfwCapacity(9);
+              setOrdinaryIntake(80);
+              setNriLimit(4);
+              setTfwCapacity(4);
             }}
             type="button"
           >
             Example scenario
           </button>
         </div>
-        <label>
+        <label className="twin-occupancy">
           Existing ordinary admissions
           <input
             type="number"
@@ -109,8 +159,8 @@ export function PolicyTwinWorkspace({ allowed }: { readonly allowed: boolean }):
             </span>
             <input
               aria-label="Proposed approved intake"
-              max="72"
-              min="50"
+              max="120"
+              min="20"
               onChange={(event) => {
                 setOrdinaryIntake(Number(event.currentTarget.value));
               }}
@@ -156,12 +206,12 @@ export function PolicyTwinWorkspace({ allowed }: { readonly allowed: boolean }):
 
       <section aria-label="Simulation outcome" className="twin-metrics">
         <Metric
-          detail="policy-valid admissions"
-          label="Access created"
+          detail="admissions under selected assumptions"
+          label="Scenario acceptance change"
           value={signed(result.acceptedSeatDelta)}
         />
         <Metric
-          detail="still safely blocked"
+          detail="exhausted buckets only; excludes invalid configuration"
           label="Capacity rejections"
           value={String(result.preventedExcessAdmissions)}
         />
@@ -170,7 +220,11 @@ export function PolicyTwinWorkspace({ allowed }: { readonly allowed: boolean }):
           label="Manual review"
           value={String(result.proposed.manualReview)}
         />
-        <Metric detail="same source-confirmed engine" label="Ruleset" value="2026.10" />
+        <Metric
+          detail="versioned rules; proposal status above"
+          label="Ruleset"
+          value={result.rulesetVersion}
+        />
       </section>
 
       <div className="twin-grid">
@@ -182,7 +236,7 @@ export function PolicyTwinWorkspace({ allowed }: { readonly allowed: boolean }):
             </div>
           </div>
           {[
-            ['Approved baseline', result.baseline.accepted, 'baseline'],
+            ['Source-aligned synthetic baseline', result.baseline.accepted, 'baseline'],
             ['Proposed policy', result.proposed.accepted, 'proposed'],
           ].map(([label, count, kind]) => (
             <div className="twin-bar-row" key={String(label)}>
@@ -235,6 +289,19 @@ export function PolicyTwinWorkspace({ allowed }: { readonly allowed: boolean }):
           </div>
           <span className="template-badge">{result.transitions.length} transitions</span>
         </div>
+        {result.transitions.length > 10 && (
+          <button
+            className="button button--secondary"
+            type="button"
+            onClick={() => {
+              setShowAllTransitions(!showAllTransitions);
+            }}
+          >
+            {showAllTransitions
+              ? 'Show first 10 transitions'
+              : `Show all ${String(result.transitions.length)} transitions`}
+          </button>
+        )}
         <div className="table-scroll">
           <table>
             <thead>
@@ -246,16 +313,29 @@ export function PolicyTwinWorkspace({ allowed }: { readonly allowed: boolean }):
               </tr>
             </thead>
             <tbody>
-              {result.transitions.slice(0, 8).map((transition) => (
-                <tr key={transition.studentKey}>
-                  <td>{transition.category.replaceAll('_', ' ')}</td>
-                  <td>{transition.baseline}</td>
-                  <td>
-                    <span className="status status--accept">{transition.proposed}</span>
-                  </td>
-                  <td>{transition.explanation}</td>
-                </tr>
-              ))}
+              {(showAllTransitions ? result.transitions : result.transitions.slice(0, 10)).map(
+                (transition) => (
+                  <tr key={transition.studentKey}>
+                    <td>
+                      <small>{transition.studentKey}</small>
+                      <br />
+                      {transition.category.replaceAll('_', ' ')}
+                    </td>
+                    <td>{transition.baseline}</td>
+                    <td>
+                      <span className="status">{transition.proposed}</span>
+                    </td>
+                    <td>
+                      {transition.explanation}
+                      <small>
+                        Before codes: {transition.baselineRuleCodes.join(', ')}
+                        <br />
+                        After codes: {transition.proposedRuleCodes.join(', ')}
+                      </small>
+                    </td>
+                  </tr>
+                ),
+              )}
             </tbody>
           </table>
         </div>

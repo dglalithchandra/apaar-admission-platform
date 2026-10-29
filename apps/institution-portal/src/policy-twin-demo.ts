@@ -21,7 +21,7 @@ const campusId = asCampusId('SYNTH-CAMPUS-POLICY-LAB');
 const programmeId = asProgrammeId('SYNTH-PROGRAMME-POLICY-LAB');
 const courseId = asCourseId('SYNTH-COURSE-POLICY-LAB');
 
-export const BASELINE_LEVERS = { nriLimit: 5, ordinaryIntake: 60, tfwCapacity: 6 } as const;
+export const BASELINE_LEVERS = { nriLimit: 3, ordinaryIntake: 60, tfwCapacity: 3 } as const;
 
 function approval(
   id: string,
@@ -86,6 +86,12 @@ function admission(
     category,
     commandId: asAdmissionCommandId(`SYNTH-COMMAND-${suffix}`),
     courseId,
+    categoryEvidenceCheck: {
+      method: 'SYNTHETIC_FIXTURE',
+      evidenceReference: 'SYNTH-CATEGORY-EVIDENCE',
+      reviewerReference: 'SYNTH-REVIEWER',
+      checkedAt: asIsoDateTime('2026-07-01T00:00:00Z'),
+    },
     eligibilityEvidence: 'VERIFIED',
     identityVerification: {
       checkedAt: asIsoDateTime('2026-07-10T10:00:00Z'),
@@ -124,12 +130,25 @@ export function runPolicyTwin(
     readonly tfwCapacity: number;
   },
   ordinaryOccupied = 0,
+  kind: 'CURRENT_RULE_CONFIGURATION' | 'HYPOTHETICAL_AMENDMENT' = 'CURRENT_RULE_CONFIGURATION',
 ): SimulationResult {
   return simulatePolicyScenario({
     initialUsage: { ...emptyCapacityUsage(), ordinaryUsed: ordinaryOccupied },
     baselineApproval: approval('SYNTH-APPROVAL-BASELINE', BASELINE_LEVERS),
     cohort: { admissions: cohort, reference: 'SYNTH-COHORT-84-ADMISSIONS' },
     scenario: {
+      kind,
+      ...(kind === 'HYPOTHETICAL_AMENDMENT'
+        ? {
+            amendment: {
+              reference: 'SYNTH-AMENDMENT-NRI-TFW-10',
+              rationale:
+                'Hypothetical 10 percent NRI and TFW ceilings; not authorized for admissions.',
+              nriPercent: 10,
+              tfwPercent: 10,
+            },
+          }
+        : {}),
       name: 'AICTE policy sandbox proposal',
       proposedApproval: approval(
         `SYNTH-APPROVAL-PROPOSED-${String(levers.ordinaryIntake)}-${String(levers.nriLimit)}-${String(levers.tfwCapacity)}`,

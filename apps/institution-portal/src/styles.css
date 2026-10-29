@@ -1865,3 +1865,62 @@ tbody tr:hover {
     border-radius: 12px;
   }
 }
+
+.twin-provenance p {
+  margin: 0 0 1rem;
+  line-height: 1.6;
+}
+.twin-provenance label {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 32rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+.twin-provenance select,
+.twin-occupancy input {
+  border: 1px solid var(--border, #cdd8df);
+  border-radius: 0.5rem;
+  padding: 0.65rem 0.8rem;
+  background: white;
+  color: #19344a;
+  font: inherit;
+}
+.twin-occupancy {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0;
+  flex-wrap: wrap;
+}
+.twin-occupancy input {
+  max-width: 7rem;
+}
+.twin-metric:last-child strong {
+  font-size: 1rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.twin-evidence td small {
+  display: block;
+  margin-top: 0.5rem;
+  overflow-wrap: anywhere;
+}
+.twin-heading > div > p:not(.eyebrow) {
+  color: #dcecf0;
+}
+.twin-page {
+  grid-template-columns: minmax(0, 1fr);
+}
+.twin-page > * {
+  min-width: 0;
+}
+.twin-provenance select {
+  min-width: 0;
+  width: 100%;
+}
+@media (max-width: 900px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -255,6 +255,14 @@ describe('BatchWorker and queries', () => {
       summary,
     );
     expect(admissions.execute).toHaveBeenCalledOnce();
+    expect(admissions.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        admission: expect.objectContaining({ eligibilityEvidence: 'PENDING' }),
+        context: expect.objectContaining({
+          reason: expect.stringContaining('INSTITUTION_DECLARATION; declared status: VERIFIED'),
+        }),
+      }),
+    );
     expect(complete).toHaveBeenCalledWith(
       'SYNTH-ROW-0001',
       'SYNTH-WORKER-0001',

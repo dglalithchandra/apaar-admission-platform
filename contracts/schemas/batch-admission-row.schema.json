@@ -25,21 +25,53 @@
     "eligibilityEvidence"
   ],
   "properties": {
-    "templateVersion": { "const": "1.0" },
-    "recordKey": { "type": "string", "minLength": 8, "maxLength": 128 },
-    "studentReference": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "templateVersion": {
+      "const": "1.0"
+    },
+    "recordKey": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128
+    },
+    "studentReference": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
     "academicIdentityReference": {
       "type": "string",
       "minLength": 1,
       "maxLength": 128,
       "description": "Opaque identity reference passed to the replaceable verifier; not an asserted verification result."
     },
-    "institutionId": { "type": "string", "minLength": 1, "maxLength": 64 },
-    "campusId": { "type": "string", "minLength": 1, "maxLength": 64 },
-    "programmeId": { "type": "string", "minLength": 1, "maxLength": 64 },
-    "courseId": { "type": "string", "minLength": 1, "maxLength": 64 },
-    "academicYear": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
-    "admissionDate": { "type": "string", "format": "date" },
+    "institutionId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "campusId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "programmeId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "courseId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "academicYear": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}$"
+    },
+    "admissionDate": {
+      "type": "string",
+      "format": "date"
+    },
     "category": {
       "type": "string",
       "enum": [
@@ -58,10 +90,22 @@
       "type": ["string", "null"],
       "enum": [null, "LATERAL_SUPERNUMERARY", "LATERAL_FIRST_YEAR_VACANCY"]
     },
-    "nri": { "type": "boolean" },
-    "oci": { "type": "boolean" },
-    "foreignNational": { "type": "boolean" },
-    "gulfWorkerChild": { "type": "boolean" },
-    "eligibilityEvidence": { "type": "string", "enum": ["VERIFIED", "PENDING", "MISSING"] }
+    "nri": {
+      "type": "boolean"
+    },
+    "oci": {
+      "type": "boolean"
+    },
+    "foreignNational": {
+      "type": "boolean"
+    },
+    "gulfWorkerChild": {
+      "type": "boolean"
+    },
+    "eligibilityEvidence": {
+      "type": "string",
+      "enum": ["VERIFIED", "PENDING", "MISSING"],
+      "description": "Institution-declared status only. VERIFIED is normalized to PENDING before policy evaluation and cannot establish an independent check."
+    }
   }
 }
