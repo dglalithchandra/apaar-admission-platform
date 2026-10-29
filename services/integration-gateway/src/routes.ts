@@ -107,6 +107,7 @@ export const DELEGATED_ROUTES: readonly DelegatedRoute[] = [
     'RECORD_READ',
     200,
   ),
+  route('GET', `/v1/institutions/${institution}/admissions`, 'listAdmissions', 'RECORD_READ', 200),
   route('GET', '/v1/admissions/(?<admissionReference>[^/]+)', 'getAdmission', 'RECORD_READ', 200),
   route('GET', `/v1/institutions/${institution}/cases`, 'listAdmissionCases', 'CASE_READ', 200),
   route(

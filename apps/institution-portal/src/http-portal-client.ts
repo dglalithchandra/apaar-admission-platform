@@ -1,4 +1,10 @@
-import type { PortalBatch, PortalClient, PortalRow } from './types.js';
+import type {
+  AdmissionListItem,
+  AdmissionEvidence,
+  PortalBatch,
+  PortalClient,
+  PortalRow,
+} from './types.js';
 
 interface HttpPortalClientOptions {
   readonly baseUrl: string;
@@ -29,6 +35,17 @@ function portalBatch(value: BatchSummaryResponse): PortalBatch {
 export class HttpPortalClient implements PortalClient {
   public constructor(private readonly options: HttpPortalClientOptions) {}
 
+  public listAdmissions(
+    search: string,
+    after: string,
+  ): Promise<{ items: readonly AdmissionListItem[]; nextCursor: string | null }> {
+    return this.json(
+      `/v1/institutions/SYNTH-INSTITUTION-001/admissions?${new URLSearchParams({ search, after })}`,
+    );
+  }
+  public admissionEvidence(reference: string): Promise<AdmissionEvidence> {
+    return this.json(`/v1/admissions/${encodeURIComponent(reference)}`);
+  }
   public async printableRecord(admissionReference: string): Promise<void> {
     const html = await this.text(
       `/v1/admissions/${encodeURIComponent(admissionReference)}/record.html`,
@@ -140,13 +157,16 @@ export function syntheticSessionToken(
 ): () => Promise<string> {
   let cached: Promise<string> | null = null;
   return async () => {
-    cached ??= fetcher(`${baseUrl}/v1/reference-sessions/${encodeURIComponent(role)}`).then(
-      async (response) => {
+    cached ??= fetcher(`${baseUrl}/v1/reference-sessions/${encodeURIComponent(role)}`)
+      .then(async (response) => {
         if (!response.ok) throw new Error('Synthetic reference session is unavailable.');
         const body = (await response.json()) as { readonly token: string };
         return body.token;
-      },
-    );
+      })
+      .catch((error: unknown) => {
+        cached = null;
+        throw error;
+      });
     return cached;
   };
 }

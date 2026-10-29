@@ -1,3 +1,4 @@
+import { AdmissionsWorkspace } from './AdmissionsWorkspace.js';
 import { OversightWorkspace } from './OversightWorkspace.js';
 import type { OversightClient } from './oversight-client.js';
 import { useMemo, useRef, useState, type ChangeEvent, type DragEvent, type JSX } from 'react';
@@ -122,7 +123,7 @@ export function App({
   readonly oversightClient?: OversightClient;
   readonly initialRole?: PreviewRole;
   readonly initialView?:
-    'BATCH' | 'CASEWORK' | 'INTEGRATIONS' | 'PILOT' | 'POLICY_TWIN' | 'OVERSIGHT';
+    'BATCH' | 'ADMISSIONS' | 'CASEWORK' | 'INTEGRATIONS' | 'PILOT' | 'POLICY_TWIN' | 'OVERSIGHT';
 }): JSX.Element {
   const batchClient = useMemo<PortalClient>(() => client ?? new DemoPortalClient(), [client]);
   const governedCaseworkClient = useMemo(
@@ -134,8 +135,9 @@ export function App({
     [integrationClient],
   );
   const [view, setView] = useState<
-    'BATCH' | 'CASEWORK' | 'INTEGRATIONS' | 'PILOT' | 'POLICY_TWIN' | 'OVERSIGHT'
+    'BATCH' | 'ADMISSIONS' | 'CASEWORK' | 'INTEGRATIONS' | 'PILOT' | 'POLICY_TWIN' | 'OVERSIGHT'
   >(initialView);
+  const [requestAdmission, setRequestAdmission] = useState('');
   const [role, setRole] = useState<PreviewRole>(initialRole);
   const caseworkRole: CaseworkRole | null =
     role === 'INSTITUTION_ADMINISTRATOR'
@@ -270,6 +272,16 @@ export function App({
             Batch upload
           </button>
           <button
+            type="button"
+            aria-current={view === 'ADMISSIONS' ? 'page' : undefined}
+            onClick={() => {
+              setView('ADMISSIONS');
+            }}
+          >
+            <GraduationCap aria-hidden="true" className="nav-icon" size={17} />
+            Admissions
+          </button>
+          <button
             aria-current={view === 'CASEWORK' ? 'page' : undefined}
             onClick={() => {
               setView('CASEWORK');
@@ -328,7 +340,17 @@ export function App({
           </div>
         </nav>
         <main id="main-content">
-          {view === 'OVERSIGHT' ? (
+          {view === 'ADMISSIONS' ? (
+            <AdmissionsWorkspace
+              client={batchClient}
+              allowed={caseworkRole !== null}
+              canRequest={role === 'INSTITUTION_OPERATOR' || role === 'INSTITUTION_ADMINISTRATOR'}
+              onRequest={(reference) => {
+                setRequestAdmission(reference);
+                setView('CASEWORK');
+              }}
+            />
+          ) : view === 'OVERSIGHT' ? (
             <OversightWorkspace
               key={role}
               {...(oversightClient === undefined ? {} : { client: oversightClient })}
@@ -345,7 +367,12 @@ export function App({
                 <p>This synthetic persona has purpose-limited integration access only.</p>
               </div>
             ) : (
-              <CaseworkWorkspace client={governedCaseworkClient} role={caseworkRole} />
+              <CaseworkWorkspace
+                key={requestAdmission}
+                client={governedCaseworkClient}
+                role={caseworkRole}
+                initialAdmissionReference={requestAdmission}
+              />
             )
           ) : view === 'INTEGRATIONS' ? (
             <IntegrationWorkspace client={governedIntegrationClient} />
@@ -360,6 +387,11 @@ export function App({
                     : 'UNAVAILABLE'
               }
             />
+          ) : role !== 'INSTITUTION_OPERATOR' && role !== 'INSTITUTION_ADMINISTRATOR' ? (
+            <div role="alert" className="error-summary">
+              Batch upload is available to institution accounts only. Select an institution preview
+              role to upload synthetic records.
+            </div>
           ) : (
             <>
               <div className="page-heading">

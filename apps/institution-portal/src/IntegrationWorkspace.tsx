@@ -46,7 +46,10 @@ export function IntegrationWorkspace({
 
       <div className="integration-warning" role="note">
         <strong>Local verification only</strong>
-        <span>APAAR, SSO, notifications and signing are simulated or disabled—not live.</span>
+        <span>
+          APAAR, SSO and notifications are simulated or disabled. Connected receipts use real
+          Ed25519 signatures from an independent local issuer, not government issuance.
+        </span>
       </div>
 
       {error !== null && (
@@ -65,10 +68,20 @@ export function IntegrationWorkspace({
       <section className="panel integration-panel" aria-labelledby="integration-heading">
         <div className="section-heading">
           <div>
-            <p className="step">Stage 5 boundary</p>
+            <p className="step">Connection status</p>
             <h2 id="integration-heading">Gateway acceptance states</h2>
           </div>
         </div>
+        {client.supportsPreviews === false && (
+          <p>
+            Verification uses the stored synthetic grant SYNTH-LEGAL-BASIS-001 for
+            SYNTH-REGISTRATION-001, recipient SYNTH-VERIFIER-ORG and purpose
+            SYNTH-PORTAL-ACCEPTANCE. It discloses only admission existence and current status. A
+            withdrawn or expired grant blocks new receipts. Receipt revocation is a separate
+            service-authorized action; refreshing below checks persisted receipt status. This screen
+            does not create or withdraw grants.
+          </p>
+        )}
         <div className="integration-actions">
           <button
             className="button"
@@ -98,6 +111,7 @@ export function IntegrationWorkspace({
             Preview provider outage
           </button>
           <button
+            disabled={client.supportsPreviews === false}
             className="button button--secondary"
             onClick={() =>
               void run(async () => {
@@ -109,6 +123,7 @@ export function IntegrationWorkspace({
             Preview unauthenticated
           </button>
           <button
+            disabled={client.supportsPreviews === false}
             className="button button--secondary"
             onClick={() =>
               void run(async () => {
@@ -132,6 +147,7 @@ export function IntegrationWorkspace({
             Issue synthetic verification receipt
           </button>
           <button
+            disabled={client.supportsPreviews === false}
             className="button button--secondary"
             onClick={() =>
               void run(async () => {
@@ -146,6 +162,7 @@ export function IntegrationWorkspace({
             Preview notification pending
           </button>
           <button
+            disabled={client.supportsPreviews === false}
             className="button button--secondary"
             onClick={() =>
               void run(async () => {
@@ -160,6 +177,7 @@ export function IntegrationWorkspace({
             Preview notification failure
           </button>
           <button
+            disabled={client.supportsPreviews === false}
             className="button button--secondary"
             onClick={() =>
               void run(async () => {
@@ -172,6 +190,7 @@ export function IntegrationWorkspace({
             Preview expired receipt
           </button>
           <button
+            disabled={client.supportsPreviews === false}
             className="button button--secondary"
             onClick={() =>
               void run(async () => {
@@ -201,6 +220,28 @@ export function IntegrationWorkspace({
         <section className="implementation-receipt" aria-labelledby="verification-receipt-heading">
           <p className="step">Synthetic verification receipt</p>
           <h2 id="verification-receipt-heading">{receipt.verificationReference}</h2>
+          {client.receiptStatus && (
+            <button
+              className="button button--secondary"
+              onClick={() => {
+                void run(async () => {
+                  if (client.receiptStatus)
+                    setReceipt(await client.receiptStatus(receipt.verificationReference));
+                  setNotice('Receipt status reloaded from the service.');
+                });
+              }}
+            >
+              Refresh receipt status
+            </button>
+          )}
+          <p>
+            Purpose: {receipt.purpose ?? 'Not supplied by this adapter'} · Recipient:{' '}
+            {receipt.requesterOrganisation ?? 'Not supplied by this adapter'}
+          </p>
+          <p>
+            Authorization: {receipt.legalBasisReference ?? 'Not supplied by this adapter'}. Expiry
+            is checked by the service; revocation can invalidate a receipt earlier.
+          </p>
           <dl>
             <div>
               <dt>Status</dt>

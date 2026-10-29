@@ -80,6 +80,14 @@
         "policyAuthority"
       ],
       "properties": {
+        "openedAt": { "type": "string", "format": "date-time", "readOnly": true },
+        "assignedReviewer": { "type": ["string", "null"], "readOnly": true },
+        "conflictStatus": {
+          "type": "string",
+          "enum": ["NOT_DECLARED", "CLEAR", "DECLARED"],
+          "readOnly": true,
+          "description": "Latest persisted declaration for the authenticated actor, not an inferred case-state value."
+        },
         "caseId": { "type": "string" },
         "caseReference": { "type": "string" },
         "admissionId": { "type": "string" },

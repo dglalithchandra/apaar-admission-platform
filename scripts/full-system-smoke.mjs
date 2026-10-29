@@ -141,6 +141,39 @@ if (summary.totals.accepted !== 1 || summary.totals.manualReview !== 3) {
 const batchRows = await request(`/v1/admission-batches/${receipt.batchId}/rows`, operator);
 const accepted = batchRows.items.find((item) => item.status === 'ACCEPTED');
 if (!accepted?.admissionReference) throw new Error('No accepted synthetic admission was produced.');
+const browsed = await request(
+  `/v1/institutions/SYNTH-INSTITUTION-001/admissions?search=${encodeURIComponent(accepted.admissionReference)}`,
+  operator,
+);
+if (
+  browsed.items.length !== 1 ||
+  browsed.items[0].registration_reference !== accepted.admissionReference
+)
+  throw new Error('Admission search did not find the stored record.');
+const storedEvidence = await request(
+  `/v1/admissions/${encodeURIComponent(accepted.admissionReference)}`,
+  operator,
+);
+if (
+  !storedEvidence.evidence.decisions.length ||
+  !storedEvidence.evidence.approval?.sourceRecord ||
+  !storedEvidence.evidence.identityChecks.length
+)
+  throw new Error('Stored decision provenance is incomplete.');
+await request(
+  '/v1/institutions/SYNTH-INSTITUTION-001/admissions',
+  tokens.AUTHORIZED_VERIFIER,
+  {},
+  403,
+);
+await request('/v1/institutions/SYNTH-OTHER-TENANT/admissions', operator, {}, 404);
+await request(
+  '/v1/institutions/SYNTH-INSTITUTION-001/admissions?search=' + 'x'.repeat(129),
+  operator,
+  {},
+  422,
+);
+
 await request(`/v1/admission-batches/${receipt.batchId}/corrections.csv`, operator);
 
 const replay = await upload(csv, caseKey('UPLOAD'));
@@ -264,6 +297,8 @@ if (caseRecord.state === 'UNDER_REVIEW') {
     { declarationId: caseKey('CONFLICT'), expectedVersion: caseRecord.version, hasConflict: false },
     caseKey('CASE-CONFLICT'),
   );
+  if ((await request(`/v1/cases/${caseId}`, tokens.AICTE_REVIEWER)).conflictStatus !== 'CLEAR')
+    throw new Error('Stored reviewer conflict declaration was lost in the read model.');
   caseRecord = await command(
     `/v1/cases/${caseId}/recommendations`,
     tokens.AICTE_REVIEWER,

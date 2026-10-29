@@ -122,3 +122,9 @@ The reviewed six-slide deck is [ASTRAL_NiyamSetu_SIH_2026_Reconciled.pptx](docs/
 The policy engine and transactional approval import now enforce the handbook capacity ceilings. A 60-seat fixture permits at most three ordinary NRI and three separate TFW seats under the current five-percent provisions. Policy Lab separates proposed configurations from explicitly unauthorized regulatory amendments and exposes all replay inputs and transitions. CSV category declarations never establish independent verification. See [ADR-0024](docs/architecture/decisions/ADR-0024-handbook-capacity-and-evidence-boundaries.md).
 
 Earlier recordings, PDFs and legacy presentations predate this correction and must not be used as current numerical evidence. Use the reconciled ASTRAL deck and updated scripts; record fresh footage from the corrected application before submission.
+
+## Judge usability
+
+The connected Admissions workspace provides tenant-scoped search, pagination, original decision evidence and governed history. A selected registration can prefill a new request. The local verifier example shows its seeded recipient/purpose/grant, independent signing and live receipt-status refresh; unsupported diagnostic simulations are disabled. See [the current judge guide](JUDGE_GUIDE.md) for practice files, correction steps and limitations.
+
+The local profile is loopback-only and must not be published through a tunnel. Safe hosted access is blocked on application authentication and evaluator isolation. If port 5173 belongs to another application, set `NIYAMSETU_PORT=5175` before `npm run judge:start` and use that port. No unrelated application needs to be stopped.

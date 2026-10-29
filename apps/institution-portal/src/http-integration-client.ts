@@ -13,6 +13,10 @@ interface HttpIntegrationClientOptions {
 }
 
 export class HttpIntegrationClient implements IntegrationClient {
+  public readonly supportsPreviews = false;
+  public receiptStatus(reference: string): Promise<IntegrationVerificationReceipt> {
+    return this.request(`/v1/verifications/${encodeURIComponent(reference)}`, { method: 'GET' });
+  }
   public constructor(private readonly options: HttpIntegrationClientOptions) {}
 
   public readiness(): Promise<IntegrationReadiness> {

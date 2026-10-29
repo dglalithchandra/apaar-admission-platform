@@ -1,90 +1,66 @@
-# NiyamSetu — Judge guide
+# NiyamSetu — judge guide
 
-**NiyamSetu | Admission Integrity & Policy Registry** is an executable, synthetic reference platform for Smart India Hackathon 2026 problem statement 26263, **APAAR ID-Based Student Data Management & Verification**.
+Independent admission registry for SIH problem 26263. The running product uses fictional SYNTH-prefixed records. Official APAAR, AICTE SSO and external approval services are not connected. Independent local Ed25519 signatures prove the local issuer signed a receipt; they do not establish government verification.
 
-**Verify the record. Apply the rule. Protect the seat.**
+## Start from a clone
 
-Judges can explore the product locally without AICTE, APAAR, API Setu or institutional credentials. NiyamSetu is an independent project and does not claim government ownership, official endorsement or live authority integration.
-
-## Important boundary
-
-The portal, admission policy, PostgreSQL persistence, batch processing, casework, audit history, integration contracts, role boundaries, outage handling, and Admission Policy Digital Twin run locally. APAAR identity results, AICTE sign-in, notifications and the external approval feed are represented by replaceable synthetic adapters. Verification receipts use real Ed25519 signatures from an independent local issuer, with a locally generated private key. This is not official credential issuance. No government or third-party service is contacted, and no real student data is included. The platform does not claim official AICTE or APAAR affiliation.
-
-## Start the platform
-
-Requirements: Docker Desktop running with its Linux engine, Git, Node.js 24 or later and npm 11 or later.
-
-From the repository root:
+Install Git, Node.js 24+ and npm 11+, and start Docker Desktop's Linux engine. Clone the existing GitHub repository and open a terminal in its root. Run:
 
 ```powershell
 npm run judge:start
 ```
 
-When the command completes, open <http://127.0.0.1:5173>. The compose stack seeds synthetic records on first start and keeps persistent state in its own local Docker volume.
+This prepares an ignored local signing key and builds/starts PostgreSQL, the gateway, portal and durable workers. Container builds run `npm ci`; a host dependency install is not needed just to launch. For host tests, run `npm ci` first. First startup needs network access to retrieve pinned images/packages. Wait for Compose to report healthy, then open <http://127.0.0.1:5173/>.
 
-Stop the services and keep the local data:
+If that port serves another application, use an unused port without stopping the other application:
 
 ```powershell
-npm run judge:stop
+$env:NIYAMSETU_PORT = '5175'
+npm run judge:start
 ```
 
-To restart after stopping, run `npm run judge:start` again. Judges do not need to run a migration or add credentials.
+Then open <http://127.0.0.1:5175/>. Keep this variable set for later starts. Stop with `npm run judge:stop`; data remain in the project's named PostgreSQL volume. Restart with `npm run judge:start`. Keep `private-inputs/local-signing/` with that database so old signatures remain verifiable. Never upload this folder to GitHub.
 
-## Suggested 8-minute exploration
+## A reproducible first journey
 
-The role selector is a local validation control, not a sign-in system. It lets judges inspect what each account type is allowed to see. Choose the role from the top of the page, then choose a workspace from the left navigation.
+1. Choose **Institution operator** in the local Preview role control. This is a local synthetic role explorer, not production login.
+2. In **Batch upload**, select `contracts/fixtures/synthetic/judge-practice.csv` from the clone and choose **Upload and validate**. With fresh fixtures and available ordinary capacity, expect one accepted ordinary admission, one invalid row missing its student reference, and one TFW row requiring category-evidence review. CSV VERIFIED is only a declaration.
+3. Read the row findings and receipt. Export corrections to retain diagnostics. Upload `judge-practice-corrected.csv`: it contains only the corrected second row with the original academic identity. Expect that ordinary row to be accepted if capacity remains. This creates a new batch; the original receipt is preserved. To correct your own file, use the original template columns, fill the missing field and remove exported diagnostic columns before re-uploading. Do not resubmit accepted rows unnecessarily.
+4. Open **Admissions**. Search `SYNTH-JUDGE-STUDENT`, select **View decision**, and inspect the actual findings, source approval, ruleset, identity check, reservations and governed history. Results are paged, 25 records at a time. The screen shows original decisions rather than silently reevaluating old records under new rules.
+5. For a registered ordinary admission choose **Create governed request**. Its reference is filled in. Enter a synthetic reason, create the draft, then **Submit for review**. Creating/submitting a request does not alter admission capacity.
+6. Switch to **AICTE reviewer**, open **Casework**, find that request and **Start review**. Declare no conflict before making a reasoned recommendation. Switch to **AICTE checker** for an independent decision. Consult the displayed available actions: approval and implementation are distinct, and unsupported remedies must not be inferred. The immutable case history records each action.
+7. As **Authorized verifier**, open **Integration assurance** and issue the synthetic verification receipt. This example is intentionally scoped to the seeded registration and stored grant shown on screen, not every admission in the registry. Read recipient, purpose, claims, expiry and local issuer. **Refresh receipt status** reads the service again. Unsupported diagnostic preview buttons are disabled in the connected application.
+8. As **AICTE reviewer**, open **Policy Lab**. The source-aligned baseline is intake 60/NRI 3/TFW 3; the example proposal is 80/4/4. Open recorded inputs and explanations. Changing to 60/5/6 blocks the configuration. Hypothetical amendments are visibly NOT AUTHORIZED and cannot activate live capacity.
 
-1. **AICTE reviewer — Policy Lab (90 seconds).** Open Policy Lab and choose **Example scenario**. See the synthetic cohort size, accepted records, capacity rejections and cases sent to a person. Change approved intake or a category limit. Outcomes recalculate, and the table explains each changed decision. The live admission ledger is not changed.
-2. **Institution operator — Batch upload (90 seconds).** Change the role to Institution operator. Download template 1.0 or use `contracts/fixtures/synthetic/admissions-valid.csv`. Upload and inspect the receipt, row results and reconciliation. The separate `admissions-errors.csv` fixture can be used to inspect safe correction paths.
-3. **AICTE reviewer — Casework (90 seconds).** Open the seeded, completed synthetic case. Inspect its state, decision history and evidence. This judge path demonstrates inspection of an existing case; it does not create a new recommendation.
-4. **AICTE checker — Casework (60 seconds).** Switch roles and inspect the separate checker view and the same case history. The sample case is already complete, so treat this as an inspection walkthrough rather than a live approval exercise.
-5. **Auditor — Integration assurance (60 seconds).** Preview a provider outage, missing access, denied access and verification receipt. The screen states which connections are simulated; no official service is contacted.
-6. **Authorized verifier — verification journey (30 seconds).** Inspect a synthetic, purpose-limited verification receipt and its expiry/revocation states.
-7. **AICTE reviewer — Pilot execution (60 seconds).** Inspect the seeded readiness checks and synthetic execution record. A local run is not represented as a real institutional pilot.
+Repeated upload of the identical file returns its original batch. Reusing an academic identity with fresh request/student keys must not reserve a second seat. Existing state can therefore change outcomes: a record already admitted may be rejected as a duplicate, and exhausted capacity blocks acceptance. Do not erase the shared local database merely to make a result look successful. For another independent practice cohort, change the SYNTH suffix consistently in record, student and academic-identity fields; keep institution/course identifiers unchanged.
 
-All committed student, institution, admission, case and policy examples use `SYNTH-` identifiers. Do not replace them with real student data.
+## What verification can and cannot establish
 
-## Evidence and regression commands
+Receipt creation requires an active stored grant matching recipient, purpose, institution/admission and allowed claims. Expired or withdrawn grants prevent new issuance. Receipt revocation is a separate service-authorized operation; this UI does not create/withdraw grants or provide an unrestricted revoke button. Existing PostgreSQL tests cover grant withdrawal and atomic issuance boundaries. The current browser example uses an explicitly fictional legal-basis grant, not real consent or statutory authority. A signed receipt cannot prove the original institution assertion was true.
+
+## Local security and hosting
+
+Compose publishes application/database ports on loopback. Do not expose this reference profile via a tunnel or public host: `/v1/reference-sessions/:role` supplies local synthetic tokens, and the role explorer is not an authentication system. There is no verified safe public deployment in this release. Hosting requires real application sessions, server-side role/tenant membership and isolated evaluator data; those are intentionally outside this package. Docker remains the supported local launch path; no new native launcher is claimed.
+
+## Verification commands
 
 ```powershell
+npm ci
 npm run check
 npm run test:integration:postgres
 npm run test:e2e:batch
 npm run test:e2e:casework
 npm run test:e2e:gateway
-npm run test:e2e:pilot
-npm run test:e2e:pilot-execution
+# If using the alternate local port:
+$env:NIYAMSETU_PORT = '5175'
+$env:FULL_SYSTEM_BASE_URL = 'http://127.0.0.1:5175'
 npm run test:full-system
-npm run test:container
-npm run test:recovery
-npm run security:scan
-npm run security:licenses
 ```
 
-The full evidence reports are linked from the root README under assurance, operations and architecture. Test runs use only disposable synthetic identifiers. The full-system command recreates its own reference journey and checks persistence across a service restart.
+The full-system suite exercises real persistence, the new admission search/evidence, verifier and tenant denial, conflict-declaration reads, governed cancellation, duplicate protection, reconciliation and restart/signature verification. Pilot subsets are included in the gateway suite; do not count them again.
 
-## Troubleshooting
+## Submission assets and troubleshooting
 
-- **Docker is unavailable:** open Docker Desktop and wait for the Linux engine to report ready, then rerun `npm run judge:start`.
-- **Port 5173 is already in use:** stop the other local app using that port, then rerun the command.
-- **The browser page is blank or stale:** reload `http://127.0.0.1:5173` after Compose reports healthy.
-- **You want a clean synthetic environment:** use Docker Desktop to remove the `apaar-platform-local` compose project and its named volume, then rerun `npm run judge:start`. This erases local synthetic journeys only.
-- **You need proof without network access:** use the six-slide SIH presentation and the committed test fixtures/reports. The captioned recording predates the NiyamSetu wordmark; use its updated narration script or record a fresh walkthrough before submission.
+Use `docs/hackathon/CURRENT_EVIDENCE.md` to select current artifacts. Existing recordings predate the reconciled product and are superseded; a fresh video remains pending. No participant study results or national-scale performance are claimed.
 
-## Repository map
-
-- `apps/institution-portal/` — browser workspace and accessible role-specific screens.
-- `services/` — admission rules, PostgreSQL application, batch ingestion, case governance, gateway and policy digital twin.
-- `contracts/` — OpenAPI contract, schemas and synthetic fixtures.
-- `infra/compose/` — local reference deployment.
-- `docs/architecture/`, `docs/assurance/`, `docs/operations/` — design decisions, test evidence and runbooks.
-- `docs/hackathon/` — SIH research, pitch script, product screenshots and judge materials.
-
-## Additional evidence checks
-
-- **Capacity oversight:** as Institution operator, load academic year 2026-27. Confirm counters and reservation ledgers reconcile, inspect the separate institution-wide PM-USPY cap, and export the current course page. Student counts repeat across buckets and must not be summed. Authorized verifier has no oversight access.
-- **Fresh-key identity checks:** run `npm run test:full-system`. It submits the same synthetic academic identity under a different local student number and request key. The second admission is rejected without another seat. Cross-institution overlaps are routed to review by the PostgreSQL suite; this is not a blanket claim that simultaneous programmes are illegal.
-- **Printable admission record:** accepted upload rows expose a record download. It is an independent admission record, not a degree. CSV 1.0 does not collect a separate institution student ID; the download explicitly says it is unavailable. The standalone synthetic sample shows the two fields separately.
-- **Verification:** new receipts require an active stored grant scoped to recipient, purpose and claims. The seeded legal-basis grant is a synthetic fixture, not real consent or statutory authority. The public key is available to authorized readers at `/v1/verification-key`. The full-system test verifies the signature using that endpoint after restart.
-- **Contention:** `npm run benchmark:postgres` creates a disposable pinned PostgreSQL container and runs 40 attempts for one seat at concurrency 1, 2 and 4. It reports errors, capacity invariants and restart persistence. It is not a national-scale benchmark.
-- **Usability:** the operator study is prepared but has zero participants. No measured usability improvement is claimed.
+If a page is stale, reload after Compose is healthy. If it displays another product, use the alternate port above. If the gateway is unavailable, wait for Docker health and retry; no browser action should be described as committed without a returned receipt. Do not remove persistent volumes unless you intentionally want to erase all local synthetic journeys. Admission lists/evidence and request histories require the connected gateway; isolated component previews do not invent them.

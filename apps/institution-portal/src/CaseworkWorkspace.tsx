@@ -50,10 +50,15 @@ function CaseState({ state }: { readonly state: PortalCaseState }): JSX.Element 
 
 interface CaseworkWorkspaceProps {
   readonly client: CaseworkClient;
+  readonly initialAdmissionReference?: string;
   readonly role: CaseworkRole;
 }
 
-export function CaseworkWorkspace({ client, role }: CaseworkWorkspaceProps): JSX.Element {
+export function CaseworkWorkspace({
+  client,
+  role,
+  initialAdmissionReference = '',
+}: CaseworkWorkspaceProps): JSX.Element {
   const [cases, setCases] = useState<readonly PortalCase[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [stateFilter, setStateFilter] = useState<'ALL' | PortalCaseState>('ALL');
@@ -62,8 +67,8 @@ export function CaseworkWorkspace({ client, role }: CaseworkWorkspaceProps): JSX
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [admissionReference, setAdmissionReference] = useState('');
+  const [showCreate, setShowCreate] = useState(initialAdmissionReference !== '');
+  const [admissionReference, setAdmissionReference] = useState(initialAdmissionReference);
   const [caseType, setCaseType] =
     useState<Exclude<PortalCaseType, 'INSTITUTION_TRANSFER'>>('ADMISSION_CORRECTION');
   const [reason, setReason] = useState('');

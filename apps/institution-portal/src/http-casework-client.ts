@@ -15,6 +15,10 @@ interface HttpCaseworkClientOptions {
 }
 
 interface CaseRecord {
+  readonly conflictStatus?: PortalCase['conflictStatus'];
+  readonly openedAt?: string;
+  readonly assignedReviewer?: string | null;
+  readonly policyAuthority?: PortalCase['policyAuthority'];
   readonly admissionId: string;
   readonly caseId: string;
   readonly caseReference: string;
@@ -188,6 +192,9 @@ export class HttpCaseworkClient implements CaseworkClient {
     role: CaseworkRole,
     summary = 'Persistent governed case. Open the immutable history for full evidence.',
   ): Promise<PortalCase> {
+    {
+      item = await this.request<CaseRecord>(`/v1/cases/${encodeURIComponent(item.caseId)}`, role);
+    }
     this.caseTypes.set(item.caseId, item.caseType);
     let admissionReference = this.admissionReferences.get(item.admissionId);
     if (admissionReference === undefined) {
@@ -205,16 +212,16 @@ export class HttpCaseworkClient implements CaseworkClient {
     }
     return {
       admissionReference,
-      assignedReviewer: null,
+      assignedReviewer: item.assignedReviewer ?? null,
       caseId: item.caseId,
       caseReference: item.caseReference,
       caseType: item.caseType,
-      conflictStatus: item.state === 'UNDER_REVIEW' ? 'NOT_DECLARED' : 'CLEAR',
+      conflictStatus: item.conflictStatus ?? 'NOT_DECLARED',
       implementationReceipt: null,
       institutionId: item.institutionId,
       lastAction: `Persistent state changed to ${item.state.toLowerCase().replaceAll('_', ' ')}.`,
-      openedAt: '2026-10-27T00:00:00.000Z',
-      policyAuthority: 'AUTHORITY_CONFIGURED',
+      openedAt: item.openedAt ?? 'Not recorded',
+      policyAuthority: item.policyAuthority ?? 'AUTHORITY_CONFIGURED',
       policyVersion: item.policyVersion,
       priority: item.priority,
       state: item.state,

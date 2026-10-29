@@ -6,6 +6,9 @@ export interface IntegrationReadiness {
 }
 
 export interface IntegrationVerificationReceipt {
+  readonly purpose?: string;
+  readonly requesterOrganisation?: string;
+  readonly legalBasisReference?: string;
   readonly algorithm: string;
   readonly claims: Readonly<Record<string, string | boolean>>;
   readonly expiresAt: string;
@@ -15,6 +18,8 @@ export interface IntegrationVerificationReceipt {
 }
 
 export interface IntegrationClient {
+  readonly supportsPreviews?: boolean;
+  receiptStatus?(reference: string): Promise<IntegrationVerificationReceipt>;
   createSyntheticVerification(): Promise<IntegrationVerificationReceipt>;
   readiness(): Promise<IntegrationReadiness>;
   simulateNotification(

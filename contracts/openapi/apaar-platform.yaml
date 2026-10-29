@@ -279,6 +279,39 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
   /v1/institutions/{institutionId}/admissions:
+    get:
+      operationId: listAdmissions
+      summary: Browse tenant-scoped stored admissions, 25 records per page
+      parameters:
+        - $ref: '#/components/parameters/InstitutionId'
+        - in: query
+          name: search
+          schema: { type: string, maxLength: 128 }
+        - in: query
+          name: after
+          schema: { type: string, maxLength: 256 }
+      responses:
+        '200':
+          description: Stored admissions and nullable nextCursor; search matches literal reference or student key
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, nextCursor]
+                properties:
+                  items:
+                    {
+                      type: array,
+                      maxItems: 25,
+                      items: { type: object, additionalProperties: true },
+                    }
+                  nextCursor: { type: [string, 'null'] }
+        '403':
+          description: Record role denied
+        '404':
+          description: Institution resource not visible to this tenant
+        '422':
+          description: Invalid search or cursor
     post:
       operationId: submitAdmission
       summary: Evaluate and transactionally persist one idempotent admission command
@@ -432,7 +465,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AdmissionDecision'
+                type: object
+                required: [id, institution_id, evidence]
+                description: Stored admission row with immutable decisions, approval provenance, input/identity assessments, reservations and governed versions. Historical counters are not inferred.
+                properties:
+                  id: { type: string }
+                  institution_id: { type: string }
+                  registration_reference: { type: [string, 'null'] }
+                  evidence: { type: object, additionalProperties: true }
+                additionalProperties: true
         '404':
           $ref: '#/components/responses/NotFound'
   /v1/academic-identity/verifications:

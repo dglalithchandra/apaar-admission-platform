@@ -1,0 +1,2 @@
+template_version,record_key,student_reference,academic_identity_reference,institution_id,campus_id,programme_id,course_id,academic_year,admission_date,category,lateral_capacity_source,nri,oci,foreign_national,gulf_worker_child,eligibility_evidence
+1.0,SYNTH-JUDGE-RECORD-002,SYNTH-JUDGE-STUDENT-002,SYNTH-JUDGE-IDENTITY-002,SYNTH-INSTITUTION-001,SYNTH-CAMPUS-001,SYNTH-PROGRAMME-001,SYNTH-COURSE-001,2026-27,2026-08-01,ORDINARY,,false,false,false,false,VERIFIED

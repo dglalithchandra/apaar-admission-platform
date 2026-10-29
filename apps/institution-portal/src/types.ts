@@ -36,7 +36,37 @@ export interface PortalBatch {
   };
 }
 
+export interface AdmissionListItem {
+  readonly id: string;
+  readonly registration_reference: string | null;
+  readonly student_key: string;
+  readonly category: string;
+  readonly academic_year_code: string;
+  readonly current_status: string;
+}
+export interface AdmissionEvidence {
+  readonly registration_reference: string | null;
+  readonly evidence: {
+    readonly decisions: readonly {
+      outcome: string;
+      ruleset_version: string;
+      findings: readonly PortalFinding[];
+    }[];
+    readonly approval: {
+      id: string;
+      source: string;
+      sourceRecord: string;
+      ordinaryIntake: number;
+    } | null;
+    readonly history: readonly { version: number; status: string; caseId: string | null }[];
+  };
+}
 export interface PortalClient {
+  listAdmissions?(
+    search: string,
+    after: string,
+  ): Promise<{ items: readonly AdmissionListItem[]; nextCursor: string | null }>;
+  admissionEvidence?(reference: string): Promise<AdmissionEvidence>;
   printableRecord?(admissionReference: string): Promise<void>;
   correctionCsv(batchId: string): Promise<string>;
   createBatch(file: File): Promise<PortalBatch>;

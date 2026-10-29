@@ -21,6 +21,8 @@ describe('casework portal journeys', () => {
       await screen.findByRole('heading', { name: 'Decisions and implementation' }),
     ).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Batch upload' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('institution accounts only');
+    await user.selectOptions(screen.getByLabelText('Preview role'), 'INSTITUTION_OPERATOR');
     expect(
       screen.getByRole('heading', { name: 'Upload student admission data' }),
     ).toBeInTheDocument();

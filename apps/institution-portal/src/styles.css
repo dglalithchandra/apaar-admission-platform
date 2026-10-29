@@ -1924,3 +1924,29 @@ tbody tr:hover {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.admissions-page {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+.admissions-page > * {
+  min-width: 0;
+}
+.admissions-page td,
+.admissions-page h2 {
+  overflow-wrap: anywhere;
+}
+.evidence-json {
+  overflow: auto;
+  max-height: 24rem;
+  max-width: 100%;
+}
+@media (max-width: 900px) {
+  .sidebar {
+    position: static;
+  }
+}
+.admissions-page h2 {
+  scroll-margin-top: 6rem;
+}

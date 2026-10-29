@@ -261,6 +261,7 @@ export class PostgresDelegatedTransport implements ExistingServiceTransportPort 
       if (operation === 'retryAdmissionBatchRow') return await this.retryBatchRow(input, principal);
       if (operation === 'downloadAdmissionBatchCorrections')
         return await this.correctionCsv(input, principal);
+      if (operation === 'listAdmissions') return await this.listAdmissions(input, principal);
       if (operation === 'getAdmission') return await this.getAdmission(input, principal);
 
       if (operation === 'listAdmissionCases') return await this.listCases(input, principal);
@@ -490,6 +491,36 @@ export class PostgresDelegatedTransport implements ExistingServiceTransportPort 
     };
   }
 
+  private async listAdmissions(
+    input: JsonObject,
+    principal: Principal,
+  ): Promise<GatewayTransportResponse> {
+    const institutionId = text(path(input)['institutionId'], 'institutionId');
+    authorize(principal, 'RECORD_READ', institutionId);
+    const values = query(input);
+    const search = typeof values['search'] === 'string' ? values['search'].trim() : '';
+    const after = typeof values['after'] === 'string' ? values['after'] : '';
+    if (search.length > 128 || after.length > 256)
+      throw new GatewayProblem('REQUEST_VALIDATION_FAILED', 422, 'Search or cursor is too long.');
+    const result = await this.dependencies.pool.query<{
+      id: string;
+      registration_reference: string | null;
+    }>(
+      `SELECT a.id,a.registration_reference,a.student_key,a.category,a.academic_year_code,a.lifecycle_status,
+        COALESCE(v.lifecycle_status,a.lifecycle_status) AS current_status
+       FROM admissions a LEFT JOIN admission_versions v ON v.admission_id=a.id AND v.is_current
+       WHERE a.institution_id=$1 AND a.id>$2
+         AND ($3='' OR position(lower($3) in lower(a.id || ' ' || COALESCE(a.registration_reference,'') || ' ' || a.student_key))>0)
+       ORDER BY a.id LIMIT 26`,
+      [institutionId, after, search],
+    );
+    const items = result.rows.slice(0, 25);
+    return response({
+      items,
+      nextCursor: result.rows.length > 25 ? (items.at(-1)?.id ?? null) : null,
+    });
+  }
+
   private async getAdmission(
     input: JsonObject,
     principal: Principal,
@@ -511,7 +542,18 @@ export class PostgresDelegatedTransport implements ExistingServiceTransportPort 
         'Admission is outside the actor tenant.',
       );
     }
-    return response(row);
+    const evidence = await this.dependencies.pool.query<{ evidence: unknown }>(
+      `SELECT jsonb_build_object(
+        'input',jsonb_build_object('category',c.category,'admissionDate',c.admission_date,'declaredOrAssessedEligibility',c.eligibility_evidence,'categoryCheck',c.category_evidence_check),
+        'identityChecks',COALESCE((SELECT jsonb_agg(jsonb_build_object('status',i.status,'checkedAt',i.checked_at,'contractVersion',i.provider_contract_version,'requestReference',i.provider_request_reference)) FROM identity_verifications i WHERE i.admission_command_id=c.id),'[]'::jsonb),
+        'decisions',COALESCE((SELECT jsonb_agg(to_jsonb(d) ORDER BY d.version) FROM admission_decisions d WHERE d.admission_id=a.id),'[]'::jsonb),
+        'approval', (SELECT jsonb_build_object('id',s.id,'source',s.source_system,'sourceRecord',s.source_record_id,'sourceHash',s.source_hash,'effectiveFrom',s.effective_from,'effectiveTo',s.effective_to,'ordinaryIntake',s.ordinary_intake) FROM approval_snapshots s WHERE s.id=a.approval_snapshot_id),
+        'reservations',COALESCE((SELECT jsonb_agg(jsonb_build_object('bucket',r.allocation_code,'units',r.units)) FROM capacity_reservations r WHERE r.admission_id=a.id),'[]'::jsonb),
+        'history',COALESCE((SELECT jsonb_agg(jsonb_build_object('version',v.version,'status',v.lifecycle_status,'caseId',v.case_id,'createdAt',v.created_at) ORDER BY v.version) FROM admission_versions v WHERE v.admission_id=a.id),'[]'::jsonb)
+       ) AS evidence FROM admissions a JOIN admission_commands c ON c.id=a.admission_command_id WHERE a.id=$1`,
+      [row['id']],
+    );
+    return response({ ...row, evidence: evidence.rows[0]?.evidence ?? null });
   }
 
   private async listCases(
@@ -552,9 +594,29 @@ export class PostgresDelegatedTransport implements ExistingServiceTransportPort 
     input: JsonObject,
     principal: Principal,
   ): Promise<GatewayTransportResponse> {
-    return response(
-      await this.caseGet.execute(actor(principal, input), text(path(input)['caseId'], 'caseId')),
+    const item = await this.caseGet.execute(
+      actor(principal, input),
+      text(path(input)['caseId'], 'caseId'),
     );
+    const declaration = await this.dependencies.pool.query<{
+      has_conflict: boolean | null;
+      created_at: Date;
+      reviewer_reference: string | null;
+    }>(
+      `SELECT c.created_at,
+        (SELECT d.has_conflict FROM case_conflict_declarations d WHERE d.case_id=c.id AND d.actor_reference=$2 ORDER BY d.declared_at DESC,d.id DESC LIMIT 1) AS has_conflict,
+        (SELECT a.reviewer_reference FROM case_assignments a WHERE a.case_id=c.id AND a.ended_at IS NULL LIMIT 1) AS reviewer_reference
+       FROM admission_cases c WHERE c.id=$1`,
+      [item.caseId, principal.actorReference],
+    );
+    const status = declaration.rows[0];
+    return response({
+      ...item,
+      openedAt: status?.created_at.toISOString(),
+      assignedReviewer: status?.reviewer_reference ?? null,
+      conflictStatus:
+        status?.has_conflict == null ? 'NOT_DECLARED' : status.has_conflict ? 'DECLARED' : 'CLEAR',
+    });
   }
 
   private async createAppeal(
