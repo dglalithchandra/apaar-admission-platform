@@ -6,7 +6,7 @@ The interface should feel like a carefully designed public service and operation
 
 - restrained neutral surfaces, one primary action colour and semantic status colours;
 - strong type hierarchy and compact, readable density;
-- square or modestly rounded controls; no glass panels, decorative gradients or floating statistics;
+- modestly rounded controls; restrained translucent navigation/header surfaces, solid readable content, no decorative gradients or floating statistics;
 - data source, timestamp, scope and next action visible beside every consequential status;
 - charts support a question and link back to records; they never exist as decoration.
 

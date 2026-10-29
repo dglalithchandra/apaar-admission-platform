@@ -97,7 +97,7 @@ export function OversightWorkspace({
         {!client && (
           <p role="status">Connect the local gateway to load stored capacity evidence.</p>
         )}
-        {busy && <p role="status">Loading capacity evidence�</p>}
+        {busy && <p role="status">Loading capacity evidence…</p>}
         {error !== null && (
           <div className="error-summary" role="alert">
             {error}
