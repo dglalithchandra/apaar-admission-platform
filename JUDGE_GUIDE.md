@@ -34,7 +34,19 @@ Then open <http://127.0.0.1:5175/>. Keep this variable set for later starts. Sto
 
 Repeated upload of the identical file returns its original batch. Reusing an academic identity with fresh request/student keys must not reserve a second seat. Existing state can therefore change outcomes: a record already admitted may be rejected as a duplicate, and exhausted capacity blocks acceptance. Do not erase the shared local database merely to make a result look successful. For another independent practice cohort, change the SYNTH suffix consistently in record, student and academic-identity fields; keep institution/course identifiers unchanged.
 
-## What verification can and cannot establish
+## Resolution guidance and snapshot integrity
+
+In Batch upload row findings and Admissions decision detail, expand **Resolution planner**. Each finding retains its original code and explanation, with a responsible actor, suggested route and required evidence. A missing field can be corrected in the original CSV template. Capacity and evidence constraints remain pending accountable review. Guidance does not implement a change or promise that resubmission will pass. It is not a minimum-cost repair solver.
+
+In Admissions, use **Download evidence bundle** to export the returned stored snapshot. Save the displayed 64-character root separately, for example in a private evaluation note. Verify offline from the repository with Node24:
+
+```powershell
+node scripts/verify-evidence.mjs '<path-to-bundle.json>' '<independently-retained-root>'
+```
+
+An unchanged file returns MATCH with exit0. Editing a finding, approval or history value returns MISMATCH with exit1. Changing the file and its internal root still fails against the original retained root. Missing command arguments return exit2. Keep this file private: it contains record evidence, not just an employer's limited claims. This checksum proves correspondence to your retained snapshot only. It does not prove official issuer identity, database completeness, trusted event time or admission before a deadline. The product does not publish roots or student evidence.
+
+## Verification boundaries
 
 Receipt creation requires an active stored grant matching recipient, purpose, institution/admission and allowed claims. Expired or withdrawn grants prevent new issuance. Receipt revocation is a separate service-authorized operation; this UI does not create/withdraw grants or provide an unrestricted revoke button. Existing PostgreSQL tests cover grant withdrawal and atomic issuance boundaries. The current browser example uses an explicitly fictional legal-basis grant, not real consent or statutory authority. A signed receipt cannot prove the original institution assertion was true.
 

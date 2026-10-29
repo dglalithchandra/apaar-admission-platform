@@ -1,4 +1,5 @@
 import { AdmissionsWorkspace } from './AdmissionsWorkspace.js';
+import { ResolutionPlan } from './ResolutionPlan.js';
 import { OversightWorkspace } from './OversightWorkspace.js';
 import type { OversightClient } from './oversight-client.js';
 import { useMemo, useRef, useState, type ChangeEvent, type DragEvent, type JSX } from 'react';
@@ -573,6 +574,7 @@ export function App({
                                         <p>{finding.message}</p>
                                       </div>
                                     ))}
+                                    <ResolutionPlan findings={row.findings} />
                                   </div>
                                 )}
                               </td>

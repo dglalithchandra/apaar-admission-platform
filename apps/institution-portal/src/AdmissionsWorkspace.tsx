@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState, type JSX } from 'react';
 import type { AdmissionListItem, AdmissionEvidence, PortalClient } from './types.js';
+import { createEvidenceBundle } from './evidence-integrity.js';
+import { ResolutionPlan } from './ResolutionPlan.js';
+import { resolutionPlan } from './resolution-plan.js';
 
 export function AdmissionsWorkspace({
   client,
@@ -22,10 +25,45 @@ export function AdmissionsWorkspace({
   }, [detail]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [evidenceRoot, setEvidenceRoot] = useState('');
+  async function exportEvidence(): Promise<void> {
+    if (!detail) return;
+    setBusy(true);
+    setError('');
+    try {
+      const bundle = await createEvidenceBundle({
+        registrationReference: detail.registration_reference,
+        ...detail.evidence,
+        resolutionGuidance: {
+          version: 'niyamsetu-resolution-guidance/1',
+          decisions: detail.evidence.decisions.map((decision) => ({
+            rulesetVersion: decision.ruleset_version,
+            steps: resolutionPlan(decision.findings),
+          })),
+        },
+      });
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' }),
+      );
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'niyamsetu-admission-evidence.json';
+      anchor.click();
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1000);
+      setEvidenceRoot(bundle.root);
+    } catch {
+      setError('Evidence export failed. A secure browser with SHA-256 support is required.');
+    } finally {
+      setBusy(false);
+    }
+  }
   async function load(after = ''): Promise<void> {
     setBusy(true);
     setError('');
     setDetail(null);
+    setEvidenceRoot('');
     try {
       if (!client.listAdmissions)
         throw new Error('Admission browsing requires the connected local gateway.');
@@ -45,6 +83,7 @@ export function AdmissionsWorkspace({
     setBusy(true);
     setError('');
     setDetail(null);
+    setEvidenceRoot('');
     try {
       if (!client.admissionEvidence) throw new Error('Stored evidence is unavailable.');
       setDetail(await client.admissionEvidence(reference));
@@ -169,6 +208,7 @@ export function AdmissionsWorkspace({
                 {decision.outcome} · decision {i + 1}
               </h3>
               <p>Ruleset: {decision.ruleset_version}</p>
+              <ResolutionPlan findings={decision.findings} />
               {decision.findings.map((finding, j) => (
                 <p key={j}>
                   <strong>{finding.code}</strong>: {finding.message}
@@ -213,6 +253,27 @@ export function AdmissionsWorkspace({
             <summary>Recorded input, source and reservation details</summary>
             <pre className="evidence-json">{JSON.stringify(detail.evidence, null, 2)}</pre>
           </details>
+          <h3>Evidence integrity</h3>
+          <p>
+            Export this stored snapshot with SHA-256 section checksums and a Merkle root. Keep the
+            root separately to detect later edits. This is not an issuer signature, a complete
+            database audit or proof of an event’s real-world time. The file contains record
+            evidence; share it only with authorized recipients.
+          </p>
+          <button
+            className="button button--secondary"
+            disabled={busy}
+            onClick={() => {
+              void exportEvidence();
+            }}
+          >
+            Download evidence bundle
+          </button>
+          {evidenceRoot && (
+            <p role="status">
+              Retain this root independently: <code>{evidenceRoot}</code>
+            </p>
+          )}
         </section>
       )}
     </div>
