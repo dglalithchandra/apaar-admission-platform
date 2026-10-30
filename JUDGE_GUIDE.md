@@ -73,6 +73,6 @@ The full-system suite exercises real persistence, the new admission search/evide
 
 ## Submission assets and troubleshooting
 
-Use `docs/hackathon/CURRENT_EVIDENCE.md` to select current artifacts. Existing recordings predate the reconciled product and are superseded; a fresh video remains pending. No participant study results or national-scale performance are claimed.
+Use `docs/hackathon/CURRENT_EVIDENCE.md` to select current artifacts. The current recording is `docs/hackathon/ASTRAL_NiyamSetu_Current_Walkthrough.mp4`, paired with `ASTRAL_NiyamSetu_Current_Video_Script.md`. Older WebM recordings predate the reconciled product and are superseded. No participant study results or national-scale performance are claimed.
 
 If a page is stale, reload after Compose is healthy. If it displays another product, use the alternate port above. If the gateway is unavailable, wait for Docker health and retry; no browser action should be described as committed without a returned receipt. Do not remove persistent volumes unless you intentionally want to erase all local synthetic journeys. Admission lists/evidence and request histories require the connected gateway; isolated component previews do not invent them.

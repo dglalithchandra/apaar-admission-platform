@@ -1,0 +1,47 @@
+1
+00:00:00,000 --> 00:00:10,000
+NiyamSetu turns admission uploads into traceable, policy-aware records.
+
+2
+00:00:10,000 --> 00:00:20,000
+An institution uploads the standard CSV and receives an immutable receipt.
+
+3
+00:00:20,000 --> 00:00:35,000
+Every row is explained: accepted, invalid, or sent for accountable human review.
+
+4
+00:00:35,000 --> 00:00:44,000
+Staff can find a student record without copying long internal identifiers.
+
+5
+00:00:44,000 --> 00:00:57,000
+The decision keeps its ruleset, approval source, findings, and governed history.
+
+6
+00:00:57,000 --> 00:01:08,000
+Evidence can be exported with section checksums and a Merkle root for tamper detection.
+
+7
+00:01:08,000 --> 00:01:20,000
+Corrections and cancellations follow a visible reviewer and checker workflow.
+
+8
+00:01:20,000 --> 00:01:33,000
+Policy Lab separates the source-aligned baseline from an unapproved proposal.
+
+9
+00:01:33,000 --> 00:01:47,000
+Each changed outcome is tied to a real rule code. The simulation never writes to the live ledger.
+
+10
+00:01:47,000 --> 00:01:55,000
+Role boundaries are enforced. A reviewer cannot use the verifier-only workflow.
+
+11
+00:01:55,000 --> 00:02:06,000
+An authorized verifier receives only the claims allowed by purpose, scope, and expiry.
+
+12
+00:02:06,000 --> 00:02:20,000
+The local receipt is Ed25519-signed and refreshable. Official APAAR integration remains intentionally unclaimed.

@@ -8,6 +8,53 @@ This repository is the production-oriented foundation for AICTE problem statemen
 
 The product goal is not merely to collect a spreadsheet. It must make every admission traceable to an approved capacity, verify or safely defer APAAR identity checks, detect conflicts, support correction and appeal, expose purpose-limited verification, and preserve a complete audit trail.
 
+## Run the working prototype
+
+The supported judge path uses Docker so PostgreSQL, migrations, workers, the gateway and the portal start together.
+
+### Prerequisites
+
+- Git;
+- Docker Desktop with the Linux/WSL 2 engine running;
+- network access on the first start to download pinned images and npm packages;
+- Node.js 24+ and npm 11+ only when running the host-side test commands.
+
+```powershell
+git clone https://github.com/dglalithchandra/apaar-admission-platform.git
+cd apaar-admission-platform
+npm run judge:start
+```
+
+Open <http://127.0.0.1:5173/>. If that port is occupied, choose another loopback port before starting:
+
+```powershell
+$env:NIYAMSETU_PORT = '5175'
+npm run judge:start
+```
+
+Stop the stack with `npm run judge:stop`. The database remains in the project Compose volume. The ignored `private-inputs/local-signing/` key must stay with that volume if previously issued local signatures need to remain verifiable.
+
+For the exact role-by-role evaluation, use [JUDGE_GUIDE.md](JUDGE_GUIDE.md). It starts with the supplied `contracts/fixtures/synthetic/judge-practice.csv` and explains the expected accepted, invalid and manual-review results. All supplied records are fictional and use `SYNTH-` identifiers.
+
+## Verified submission snapshot
+
+The final documentation/media pass did not change application behavior. The following commands were rerun on 30 October 2026 against the current working tree:
+
+| Verification                        | Actual result                                                                                                                                                                                           |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run check`                     | Passed formatting, lint, production builds, type checking, coverage and contract/schema validation; 347 unit/component tests passed                                                                     |
+| `npm run test:integration:postgres` | 17/17 passed against a real disposable PostgreSQL Testcontainer                                                                                                                                         |
+| `npm run test:e2e:batch`            | 11/11 passed against PostgreSQL                                                                                                                                                                         |
+| `npm run test:e2e:casework`         | 21/21 passed against PostgreSQL                                                                                                                                                                         |
+| `npm run test:e2e:gateway`          | 25/25 passed against PostgreSQL                                                                                                                                                                         |
+| `npm run test:full-system`          | Passed the connected Compose journey, seven roles, persistence across restart, duplicate rejection, cancellation/readmission, reconciliation, printable record and signature verification after restart |
+| `npm audit --audit-level=high`      | 0 vulnerabilities reported                                                                                                                                                                              |
+| `npm run security:scan`             | No credential-shaped values found in repository text files                                                                                                                                              |
+
+Coverage is reported per workspace, not as one misleading blended percentage. The admission-domain and casework packages retained 100% statement/branch/function/line coverage; the portal reported 86.25% statements and 87.68% lines. Full output can be reproduced with the commands above. These are local synthetic engineering results, not a production certification, participant study or national-scale benchmark.
+
+The concise [final verification report](docs/assurance/final-submission-verification.md) records the test scope and limitations without committing generated logs or coverage folders.
+
 ## Current status
 
 The engineering foundation through the integrated synthetic Stage 7B reference deployment is complete:
@@ -50,12 +97,12 @@ No real student data, credentials or official AICTE/APAAR branding are present.
 ## SIH judge pack
 
 - [Judge setup and complete role-by-role walkthrough](JUDGE_GUIDE.md)
-- [Current reconciled six-slide presentation](docs/hackathon/ASTRAL_NiyamSetu_SIH_2026_Reconciled.pptx) (editable PowerPoint)
-- [Legacy recorded walkthrough](docs/hackathon/APAAR_SIH_2026_walkthrough.webm) (shows the earlier Admission Registry name) and [current NiyamSetu narration script](docs/hackathon/VIDEO_SCRIPT.md)
+- [Current 2:20 NiyamSetu walkthrough](docs/hackathon/ASTRAL_NiyamSetu_Current_Walkthrough.mp4), [natural narration script](docs/hackathon/ASTRAL_NiyamSetu_Current_Video_Script.md) and [caption file](docs/hackathon/ASTRAL_NiyamSetu_Current_Walkthrough.srt)
+- [Complete project documentation](docs/hackathon/PROJECT_DOCUMENTATION.md)
 - [Legacy plain-language project guide](docs/hackathon/APAAR_Platform_Simple_Guide.pdf) (shows the earlier Admission Registry name)
 - [Presentation research and design rationale](docs/hackathon/SIH_PRESENTATION_RESEARCH.md)
 
-The current ASTRAL presentation preserves the six-slide format and updates the policy chart and screenshots. Set the assigned team ID before submission. Earlier decks are superseded. The linked PDF, screenshots and silent walkthrough are earlier Admission Registry assets and must be regenerated before presenting them as NiyamSetu materials. The recording uses only local synthetic records. Official identity, sign-in and signing services are not connected.
+The current walkthrough is a captioned edit of captures from the reconciled NiyamSetu application, with a composited pointer highlight. The separate script is ready for human narration; the MP4 has no voice track. It uses only local synthetic records and states the integration boundary on screen: official APAAR, AICTE SSO and external approval services are not connected. Older WebM recordings contain superseded policy values or branding and are retained only as history.
 
 ## Current verification improvements
 
@@ -115,13 +162,13 @@ Do not commit APAAR, Aadhaar, names, dates of birth, mobile numbers, emails, sig
 
 ## Current ASTRAL submission material
 
-The reviewed six-slide deck is [ASTRAL_NiyamSetu_SIH_2026_Reconciled.pptx](docs/hackathon/ASTRAL_NiyamSetu_SIH_2026_Reconciled.pptx). The [superseded browser walkthrough — do not submit as current evidence](docs/hackathon/ASTRAL_NiyamSetu_Walkthrough.webm) and [updated narration for re-recording](docs/hackathon/ASTRAL_NiyamSetu_Walkthrough_Script.md) show only synthetic local data. The [judge guide](JUDGE_GUIDE.md) gives setup and role-by-role testing steps. The [operator study](docs/research/operator-study/README.md) is prepared for later, with zero sessions completed.
+The [current walkthrough](docs/hackathon/ASTRAL_NiyamSetu_Current_Walkthrough.mp4) and [matching narration](docs/hackathon/ASTRAL_NiyamSetu_Current_Video_Script.md) reflect the source-aligned policy baseline and current institutional interface. The [judge guide](JUDGE_GUIDE.md) gives setup and role-by-role testing steps. The [operator study](docs/research/operator-study/README.md) is prepared for later, with zero sessions completed.
 
 ### Policy and evidence reconciliation
 
 The policy engine and transactional approval import now enforce the handbook capacity ceilings. A 60-seat fixture permits at most three ordinary NRI and three separate TFW seats under the current five-percent provisions. Policy Lab separates proposed configurations from explicitly unauthorized regulatory amendments and exposes all replay inputs and transitions. CSV category declarations never establish independent verification. See [ADR-0024](docs/architecture/decisions/ADR-0024-handbook-capacity-and-evidence-boundaries.md).
 
-Earlier recordings, PDFs and legacy presentations predate this correction and must not be used as current numerical evidence. Use the reconciled ASTRAL deck and updated scripts; record fresh footage from the corrected application before submission.
+Earlier recordings, PDFs and legacy presentations predate this correction and must not be used as current numerical evidence. Use the current MP4 and narration linked above.
 
 ## Judge usability
 
